@@ -98,6 +98,17 @@ def get_tourney_info(emaid):
     res = http.request('GET',url)
     soup = bs4.BeautifulSoup(res.data, 'html.parser')
     results = soup.find_all("table", {'frame' : "BOX"})
+
+    if debug:
+        with open('soup.txt','w') as f:
+            f.truncate()
+            f.write(soup.prettify())
+
+        with open('results.txt','w') as f:
+            f.truncate()
+            for i in results:
+                f.write(i.text)
+
     if len(results) == 2:
         tablelist = table_data_text(results[1])
     elif len(results) == 1:
