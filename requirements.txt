@@ -2,3 +2,5 @@ pycountry
 requests
 bs4
 python-dateutil
+sqlalchemy
+alembic
