@@ -4,3 +4,5 @@ bs4
 python-dateutil
 sqlalchemy
 alembic
+daterangeparser
+dateparser

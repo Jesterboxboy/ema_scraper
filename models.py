@@ -1,10 +1,12 @@
-from sqlalchemy import ForeignKey
+import enum
+from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-# from sqlalchemy.ext.associationproxy import association_proxy
-# from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import AssociationProxy
 from datetime import datetime
-from typing import Optional, Set
+from typing import Optional, List
 from sqlalchemy.types import String
+
 
 class Base(DeclarativeBase):
     pass
@@ -12,57 +14,94 @@ class Base(DeclarativeBase):
 metadata = Base.metadata
 
 
+class RulesetClass(enum.Enum):
+    Riichi = "Riichi"
+    MCR = "MCR"
+
+Ruleset: Enum = Enum(
+    RulesetClass,
+    name="ruleset_type",
+    create_constraint=True,
+    metadata=Base.metadata,
+    validate_strings=True,
+)
+
+
 class Country(Base):
     __tablename__ = "country"
-    id: Mapped[str] = mapped_column(String(2), primary_key=True)
+    id: Mapped[str] = mapped_column(String(3), primary_key=True)
+    iso2: Mapped[str] = mapped_column(String(2), unique=True)
     name_english: Mapped[str]
     name_native: Mapped[str]
     ema_since: Mapped[datetime]
-    players: Mapped[Set["Player"]] = relationship(back_populates="country")
-    tournaments: Mapped[Set["Tournament"]] = relationship(back_populates="country")
+
+    players: Mapped[List["Player"]] = relationship(back_populates="country")
+    tournaments: Mapped[List["Tournament"]] = relationship(
+        back_populates="country")
 
 
 class PlayerTournament(Base):
     __tablename__ = "player_x_tournament"
-    player_id: Mapped[int] = mapped_column(ForeignKey("player.id"), primary_key=True)
+    player_id: Mapped[int] = mapped_column(
+        ForeignKey("player.id"), primary_key=True)
     tournament_id: Mapped[int] = mapped_column(
         ForeignKey("tournament.id"), primary_key=True
     )
-    actual_rank: Mapped[int]
+    score: Mapped[int]
+    position: Mapped[int]
     base_rank: Mapped[int]
+    s_ema: Mapped[bool]
+
+    # we want to record what the country of affiliation was at the time of
+    # the event, as this is used to calculate MERS. Affiliation may change
+    # after the event, so we need the historic, not live, value
+    country_id: Mapped[str] = mapped_column(ForeignKey("country.id"))
+
     player: Mapped["Player"] = relationship(back_populates="tournaments")
     tournament: Mapped["Tournament"] = relationship(back_populates="players")
-
-    # we want to record what the  country of affiliation was at the time of
-    # the event. (It may change afterwards)
-    country_id: Mapped[str] = mapped_column(ForeignKey("country.id"))
 
 
 class Player(Base):
     __tablename__ = "player"
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sorting_name: Mapped[str]
     calling_name: Mapped[str]
-    old_ema_id: Mapped[str] = mapped_column(String(8))
-    country_id: Mapped[str] = mapped_column(ForeignKey("country.id"))
+    ema_id: Mapped[Optional[str]] = mapped_column(String(8))
+    country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
     local_club: Mapped[Optional[str]]
     local_club_url: Mapped[Optional[str]]
-    tournaments: Mapped[Set[PlayerTournament]] = relationship(back_populates="player")
+    profile_pic: Mapped[Optional[str]]
+
     country: Mapped["Country"] = relationship(back_populates="players")
+    tournaments: Mapped[List[PlayerTournament]] = relationship(
+        back_populates="player",
+        order_by="desc(end_date)",
+        )
+    tournament_weights: AssociationProxy[List[float]] = association_proxy(
+        "tournaments",
+        "weighting",
+        )
 
 
 class Tournament(Base):
     __tablename__ = "tournament"
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    old_id: Mapped[int]
+    title: Mapped[str]
+    place: Mapped[Optional[str]]
     mers: Mapped[float]
     name: Mapped[str]
     url: Mapped[str]
-    ruleset: Mapped[str] # TODO enum or something: Riichi || MCR
+    ruleset: Mapped[str] = mapped_column(Ruleset, nullable=False)
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]
     effective_end_date: Mapped[datetime]
+    player_count: Mapped[int]
+    ema_country_count: Mapped[int]
+
+    weighting: Mapped[int] # will be calculated live
+
     country_id: Mapped[str] = mapped_column(ForeignKey("country.id"))
     country: Mapped["Country"] = relationship(back_populates="tournaments")
-    players: Mapped[Set[PlayerTournament]] = relationship(back_populates="tournament")
-    nPlayers: Mapped[int]
-    nEMACountries: Mapped[int]
+    players: Mapped[List[PlayerTournament]] = relationship(
+        back_populates="tournament")

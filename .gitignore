@@ -5,4 +5,6 @@ hardcopy*
 .vscode/
 
 *.pyc
-migrations/README
+migrations/versions/
+migrations/versions/__pycache__
+.spyproject/

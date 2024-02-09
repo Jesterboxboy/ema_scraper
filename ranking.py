@@ -52,22 +52,27 @@
 #
 # ================================================
 
+from datetime import date
 from math import ceil
 from sqlalchemy import sql_execute, sql_query_all
 
+def yearsPrior(years, toDate):
+    # this is a bit contrived, but it doesn't choke on leap years
+    return toDate + (date(toDate.year + years, 1, 1) - date(toDate.year, 1, 1))
+
 # For all tournaments, given reckoning day, calculate tournament weighting
-def weight_tournaments(reckoning_day, exclusion_period, halving_period):
-    check1 = sql_execute("UPDATE tournaments SET age = DURATION(:date, effective_end_date)",
-                         {"date": reckoning_day})
-    limits = {"expiry": exclusion_period, "reducer": halving_period}
+def weight_tournaments(reckoning_day):
+    expiry_day = yearsPrior(2, reckoning_day)
+    halving_day = yearsPrior(1, reckoning_day)
+    limits = {"expiry": expiry_day, "reducer": halving_day}
     check2 = sql_execute(
-        "UPDATE tournaments SET weighting = 0 IF age > :expiry",
+        "UPDATE tournaments SET weighting = 0 IF effective_end_date < :expiry",
         limits)
     check3 = sql_execute(
-        "UPDATE tournaments SET weighting = 0.5 IF age > :reducer AND age <= :expiry",
+        "UPDATE tournaments SET weighting = 0.5 IF effective_end_date < :reducer AND effective_end_date >= :expiry",
         limits)
     check4 = sql_execute(
-        "UPDATE tournaments SET weighting = 1 IF age <= :reducer",
+        "UPDATE tournaments SET weighting = 1 IF age >= :reducer",
         limits)
     check5 = sql_execute(
         "UPDATE tournaments_x_players JOIN tournaments ON tournament_id SET tournaments_x_players.weighting=tournaments.weighting")
