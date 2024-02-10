@@ -19,6 +19,9 @@ class RulesetClass(enum.Enum):
     MCR = "MCR"
 
 Ruleset: Enum = Enum(
+    # this may trigger an error in alembic
+    # if it does, go into the revision file, and remove the
+    # metadata=MetaData() clause where the Column is created
     RulesetClass,
     name="ruleset_type",
     create_constraint=True,
@@ -29,11 +32,11 @@ Ruleset: Enum = Enum(
 
 class Country(Base):
     __tablename__ = "country"
-    id: Mapped[str] = mapped_column(String(3), primary_key=True)
-    iso2: Mapped[str] = mapped_column(String(2), unique=True)
+    id: Mapped[str] = mapped_column(String(2), primary_key=True) # iso2
+    old3: Mapped[Optional[str]]
     name_english: Mapped[str]
-    name_native: Mapped[str]
-    ema_since: Mapped[datetime]
+    name_native: Mapped[Optional[str]]
+    ema_since: Mapped[Optional[datetime]]
 
     players: Mapped[List["Player"]] = relationship(back_populates="country")
     tournaments: Mapped[List["Tournament"]] = relationship(
@@ -50,7 +53,7 @@ class PlayerTournament(Base):
     score: Mapped[int]
     position: Mapped[int]
     base_rank: Mapped[int]
-    s_ema: Mapped[bool]
+    was_ema: Mapped[bool]
 
     # we want to record what the country of affiliation was at the time of
     # the event, as this is used to calculate MERS. Affiliation may change
@@ -72,10 +75,9 @@ class Player(Base):
     local_club_url: Mapped[Optional[str]]
     profile_pic: Mapped[Optional[str]]
 
-    country: Mapped["Country"] = relationship(back_populates="players")
+    country: Mapped[Optional[Country]] = relationship(back_populates="players")
     tournaments: Mapped[List[PlayerTournament]] = relationship(
         back_populates="player",
-        order_by="desc(end_date)",
         )
     tournament_weights: AssociationProxy[List[float]] = association_proxy(
         "tournaments",
@@ -89,19 +91,20 @@ class Tournament(Base):
     old_id: Mapped[int]
     title: Mapped[str]
     place: Mapped[Optional[str]]
-    mers: Mapped[float]
-    name: Mapped[str]
-    url: Mapped[str]
+    mers: Mapped[Optional[float]]
+    url: Mapped[Optional[str]]
     ruleset: Mapped[str] = mapped_column(Ruleset, nullable=False)
+    raw_date: Mapped[str]
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]
     effective_end_date: Mapped[datetime]
     player_count: Mapped[int]
-    ema_country_count: Mapped[int]
+    ema_country_count: Mapped[Optional[int]]
+    scraped_on: Mapped[Optional[datetime]]
 
-    weighting: Mapped[int] # will be calculated live
+    weighting: Mapped[Optional[int]] # will be calculated live
 
-    country_id: Mapped[str] = mapped_column(ForeignKey("country.id"))
-    country: Mapped["Country"] = relationship(back_populates="tournaments")
+    country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
+    country: Mapped[Optional[Country]] = relationship(back_populates="tournaments")
     players: Mapped[List[PlayerTournament]] = relationship(
         back_populates="tournament")
