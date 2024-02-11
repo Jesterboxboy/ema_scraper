@@ -20,8 +20,6 @@ URLBASE = "http://silk.mahjong.ie/ranking/"
 
 class Tournament_Scraper:
     def __init__(self, country, session):
-        self.country = country
-        self.date_format = "%Y-%m-%d"
         self.session = session
 
     def add_country(self, iso2, old3):
@@ -74,16 +72,6 @@ class Tournament_Scraper:
                     print(f"ERROR parsing date '{raw_date}' for '{title}'")
         return start_date, end_date
 
-    def parse_country(self, country_string): # TODO
-        country_match = country_pattern.search(country_string)
-        country_iso2 = country_match.group(1) if country_match else 'NaN'
-        try:
-            self.tournament.country_id = \
-                pycountry.countries.get(alpha_2=country_iso2).alpha_3
-            self.add_country(self.tournament.country_id, country_iso2)
-        except:
-            self.tournament.country_id = "???"
-
     def scrape_tournaments_by_year(self, year):
         year_url = f"{URLBASE}Tournament/Tournaments_{year}.html"
         year_page = requests.get(year_url)
@@ -119,7 +107,7 @@ class Tournament_Scraper:
             print(f"we already scraped this tournament at {last_scraped}")
             return True
 
-        tournament_soup = get_bs4_tournament_page(tournament_id)
+        tournament_soup = self.get_bs4_tournament_page(tournament_id)
         tournament_info = tournament_soup.findAll("td")
 
         # get mers weight
@@ -149,9 +137,9 @@ class Tournament_Scraper:
         # As long as the country name doesn't have a comma in it
         t.place = ", ".join(place.split(",")[0:-1])
 
-        raw_date = tournament_info[8].text.strip().title()
+        t.raw_date = tournament_info[8].text.strip().title()
         t.title = tournament_info[4].text.strip().title()
-        t.start_date, t.end_date = self.parse_dates(raw_date, t.title)
+        t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
         t.effective_end_date = t.end_date
 
         t.ruleset = RulesetClass.Riichi
@@ -166,24 +154,56 @@ class Tournament_Scraper:
         # scrape results for tournament
         self.extract_tournament_results_from_page(t, tournament_soup)
 
-    def add_player(old_id):
-        pass # TODO
+    def add_player(self, ema_id):
+        # if ema_id is zero, create player with blank ema_id
+        p = Player()
+        page = requests.get(f"{URLBASE}Players/{ema_id}.html")
+        dom = BeautifulSoup(page.content, "html.parser")
+        rows = dom.findAll(
+            "div", {"class": "contentpaneopen"}
+            )[0].find("table").find_all("tr")
+        p.ema_id = ema_id
+        try:
+            flag_string = rows[3].find("img").attrs["src"]
+            matches = country_pattern.search(flag_string)
+            iso2 = matches[1]
+            country_string = rows[3].find("a").attrs["href"]
+            country_match = country_link_pattern.search(country_string)
+            old3 = "???" if country_match is None else \
+                country_match.group(1)
+        except:
+            iso2 = "??"
+            old3 = "???"
+        p.country = self.add_country(old3=old3, iso2=iso2)
+        org = rows[4].findAll("td")[1].find("a")
+        p.country.national_org_url = org.attrs['href']
+        p.country.national_org_name = org.string
+        try:
+            p.local_club = "" # TODO from rows[5]
+            p.local_club_url = "" # TODO
+        except:
+            pass
+        p.calling_name = rows[2].find_all("td")[1].string
+        # just guess that the family name is the word after the last space
+        names = p.calling_name.split(" ")
+        p.sorting_name = names[-1] + ", " + "  ".join(names[0:-1])
+        pic = rows[0].find("img").attrs["src"]
+        p.profile_pic = None if pic == "photo/Vide.jpg" else pic
+        self.session.add(p)
+        return p
 
-    def add_one_result(self, t, old_id, score, rank):
-        # first check whether player is in db yet
-        p = self.session.query(Player).filter(ema_id=old_id).first()
-        if t is None:
-            p = self.add_player(old_id)
+
+    def add_one_result(self, tournament, player, score, rank):
         pt = PlayerTournament()
-        pt.player = p
-        pt.tournament = t
+        pt.player = player
+        pt.tournament = tournament
         pt.score = score
         pt.base_rank = rank
         pt.was_ema = True
-        session.add(pt)
+        self.session.add(pt)
         return pt
 
-    def extract_tournament_results_from_page(t, tournament_soup):
+    def extract_tournament_results_from_page(self, t, tournament_soup):
         """Enter results for tournament. given the Tournament object
         and BS4 web page"""
         results_table = tournament_soup.findAll(
@@ -193,28 +213,38 @@ class Tournament_Scraper:
         for result in results:
             result_content = result.findAll("p")
             position = int(result_content[0].text.strip())
-            player_id = result_content[1].text.strip(
-                ) if result_content[1].text.strip() != '-' else -1
-            score = int(result_content[6].text.strip(
-                )) if result_content[6].text.strip() != '-' else -1
+            player_id = 0 if result_content[1].text.strip() == '-' else \
+                result_content[1].text.strip()
+            score = 0 if result_content[6].text.strip() == '-' else \
+                int(result_content[6].text.strip())
+
+            if player_id:
+                p = self.session.query(Player).filter_by(ema_id=player_id).first()
+                if p is None:
+                    p = self.add_player(player_id)
+                    # TODO add sorting_name here
+                    self.session.commit()
+            else:
+                p = Player()
+                p.calling_name = "TBD" # TODO
+                p.sorting_name = "TBD" # TODO
+                self.session.add(p)
+                self.session.commit()
+
             self.add_one_result(
                 t,
-                old_id=player_id,
+                player=p,
                 score=score,
-                rank=position,
+                base_rank=int(1000*position/t.player_count),
+                position=position,
+                was_ema=player_id > 0,
+                country_id=p.country_id,
                 )
+        self.session.commit()
 
-    def scrape_tournament_results(self, tournament_id):
-        # it's not clear if this function is still needed
-        t = self.session.query(Tournament).filter(old_id=tournament_id).first()
-        # check that tournament exists; if not, create it
-        if t is None:
-            self.scrape_tournament_by_id(tournament_id)
-        tournament_soup = get_bs4_tournament_page(tournament_id)
 
-    def scrape_players_by_country(self):
-        country = self.country
-
+    def scrape_players_by_country(self, country):
+        # TODO doesn't work yet
         url = f"{URLBASE}Country/{country}_RCR.html"
         page = requests.get(url)
         soup = BeautifulSoup(page.content, "html.parser")

@@ -8,7 +8,7 @@ engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
     rating = Tournament_Scraper("DEN", session)
-    rating.scrape_tournament_by_id(264)
+    rating.scrape_tournament_by_id(309)
 
 exit()
 

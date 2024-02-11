@@ -37,6 +37,8 @@ class Country(Base):
     name_english: Mapped[str]
     name_native: Mapped[Optional[str]]
     ema_since: Mapped[Optional[datetime]]
+    national_org_name: Mapped[Optional[str]]
+    national_org_url: Mapped[Optional[str]]
 
     players: Mapped[List["Player"]] = relationship(back_populates="country")
     tournaments: Mapped[List["Tournament"]] = relationship(
@@ -94,7 +96,7 @@ class Tournament(Base):
     mers: Mapped[Optional[float]]
     url: Mapped[Optional[str]]
     ruleset: Mapped[str] = mapped_column(Ruleset, nullable=False)
-    raw_date: Mapped[str]
+    raw_date: Mapped[Optional[str]]
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]
     effective_end_date: Mapped[datetime]
