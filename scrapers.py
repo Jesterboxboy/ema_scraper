@@ -31,15 +31,20 @@ class Tournament_Scraper:
             name_native = "???"
             name = "???"
         else:
-            translator = translation(
-                "iso639-3",
-                pycountry.LOCALES_DIR,
-                languages = [iso2],
-                )
-            language = pycountry.languages.get(alpha_2=iso2)
-            name_native = translator.gettext(language.name)
             country = pycountry.countries.get(alpha_2=iso2)
             name = country.name
+            try:
+                # try to get the country's name in its own language. Crude. Works for some countries. Sorry Belgium.
+                translator = translation(
+                    "iso639-3",
+                    pycountry.LOCALES_DIR,
+                    languages = [iso2],
+                    )
+                language = pycountry.languages.get(alpha_2=iso2)
+                name_native = translator.gettext(language.name)
+            except:
+                print(f"WARNING: failed to find language '{iso2}'")
+                name_native = name
 
         c = Country()
         c.id=iso2
@@ -150,6 +155,7 @@ class Tournament_Scraper:
 
         # add tournament to db
         self.session.add(t)
+        self.session.commit()
 
         # scrape results for tournament
         self.extract_tournament_results_from_page(t, tournament_soup)
@@ -175,14 +181,19 @@ class Tournament_Scraper:
             iso2 = "??"
             old3 = "???"
         p.country = self.add_country(old3=old3, iso2=iso2)
-        org = rows[4].findAll("td")[1].find("a")
-        p.country.national_org_url = org.attrs['href']
-        p.country.national_org_name = org.string
         try:
-            p.local_club = "" # TODO from rows[5]
-            p.local_club_url = "" # TODO
+            org = rows[4].findAll("td")[1]
+            p.country.national_org_name = org.string
+            p.country.national_org_url = org.find("a").attrs['href']
         except:
             pass
+        try:
+            org = rows[5].findAll("td")[1]
+            p.local_club = org.string
+            p.local_club_url = org.find("a").attrs["href"]
+        except:
+            pass
+
         p.calling_name = rows[2].find_all("td")[1].string
         # just guess that the family name is the word after the last space
         names = p.calling_name.split(" ")
@@ -192,16 +203,6 @@ class Tournament_Scraper:
         self.session.add(p)
         return p
 
-
-    def add_one_result(self, tournament, player, score, rank):
-        pt = PlayerTournament()
-        pt.player = player
-        pt.tournament = tournament
-        pt.score = score
-        pt.base_rank = rank
-        pt.was_ema = True
-        self.session.add(pt)
-        return pt
 
     def extract_tournament_results_from_page(self, t, tournament_soup):
         """Enter results for tournament. given the Tournament object
@@ -217,31 +218,35 @@ class Tournament_Scraper:
                 result_content[1].text.strip()
             score = 0 if result_content[6].text.strip() == '-' else \
                 int(result_content[6].text.strip())
-
+            rank = int(
+                1000 * (t.player_count - position) / (t.player_count - 1)
+                )
             if player_id:
                 p = self.session.query(Player).filter_by(ema_id=player_id).first()
                 if p is None:
                     p = self.add_player(player_id)
                     # TODO add sorting_name here
                     self.session.commit()
+                was_ema = True
             else:
                 p = Player()
                 p.calling_name = "TBD" # TODO
                 p.sorting_name = "TBD" # TODO
                 self.session.add(p)
                 self.session.commit()
+                was_ema = False
 
-            self.add_one_result(
-                t,
-                player=p,
-                score=score,
-                base_rank=int(1000*position/t.player_count),
-                position=position,
-                was_ema=player_id > 0,
-                country_id=p.country_id,
-                )
-        self.session.commit()
-
+            cid = p.country_id
+            pt = PlayerTournament()
+            pt.player = p
+            pt.tournament = t
+            pt.score = score
+            pt.position = position
+            pt.base_rank = rank
+            pt.was_ema = was_ema
+            pt.country_id = cid
+            self.session.add(pt)
+            self.session.commit()
 
     def scrape_players_by_country(self, country):
         # TODO doesn't work yet

@@ -60,7 +60,7 @@ class PlayerTournament(Base):
     # we want to record what the country of affiliation was at the time of
     # the event, as this is used to calculate MERS. Affiliation may change
     # after the event, so we need the historic, not live, value
-    country_id: Mapped[str] = mapped_column(ForeignKey("country.id"))
+    country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
 
     player: Mapped["Player"] = relationship(back_populates="tournaments")
     tournament: Mapped["Tournament"] = relationship(back_populates="players")
