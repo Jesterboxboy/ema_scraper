@@ -35,7 +35,6 @@ class Country(Base):
     id: Mapped[str] = mapped_column(String(2), primary_key=True) # iso2
     old3: Mapped[Optional[str]]
     name_english: Mapped[str]
-    name_native: Mapped[Optional[str]]
     ema_since: Mapped[Optional[datetime]]
     national_org_name: Mapped[Optional[str]]
     national_org_url: Mapped[Optional[str]]

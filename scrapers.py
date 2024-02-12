@@ -10,7 +10,6 @@ from dateutil.parser import parse as du_parse
 from dateparser import parse as dp_parse
 from daterangeparser import parse as dr_parse
 import pycountry
-from gettext import translation
 
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 
@@ -19,7 +18,7 @@ country_pattern = re.compile(r'/([a-z]{2}).png')
 URLBASE = "http://silk.mahjong.ie/ranking/"
 
 class Tournament_Scraper:
-    def __init__(self, country, session):
+    def __init__(self, session):
         self.session = session
 
     def add_country(self, iso2, old3):
@@ -28,29 +27,15 @@ class Tournament_Scraper:
             # already in db, nothing to do
             return test_exists
         if iso2 == "??":
-            name_native = "???"
             name = "???"
         else:
             country = pycountry.countries.get(alpha_2=iso2)
             name = country.name
-            try:
-                # try to get the country's name in its own language. Crude. Works for some countries. Sorry Belgium.
-                translator = translation(
-                    "iso639-3",
-                    pycountry.LOCALES_DIR,
-                    languages = [iso2],
-                    )
-                language = pycountry.languages.get(alpha_2=iso2)
-                name_native = translator.gettext(language.name)
-            except:
-                print(f"WARNING: failed to find language '{iso2}'")
-                name_native = name
 
         c = Country()
         c.id=iso2
         c.old3=old3
         c.name_english=name
-        c.name_native=name_native
         self.session.add(c)
         self.session.commit()
         return c
@@ -60,24 +45,39 @@ class Tournament_Scraper:
         in turn. Some dates don't have a year: but year is in tourney title,
         so we need TODO something clever with that"""
         # TODO get tourney year from tourney title if needed
-        start_date = end_date = None
-        try:
-            start_date, end_date = dr_parse(raw_date)
-            if start_date is not None and end_date is None:
-                end_date = start_date
-        except Exception as e:
-            try:
-                end_date = start_date = du_parse(raw_date)
-            except Exception as e:
+        match raw_date:
+            case "19-20-21 Apr. 2019":
+                start_date = datetime(2019, 4, 19)
+                end_date = datetime(2019, 4, 21)
+            case "23-24 Mars 2019":
+                start_date = datetime(2019, 3, 23)
+                end_date = datetime(2019, 3, 24)
+            case _:
+                start_date = end_date = None
                 try:
-                    end_date = start_date = dp_parse(raw_date)
-                except Exception as e:
-                    start_date = end_date = None
-                    # TODO log failure to parse date
-                    print(f"ERROR parsing date '{raw_date}' for '{title}'")
+                    start_date, end_date = dr_parse(raw_date)
+                    if start_date is not None and end_date is None:
+                        end_date = start_date
+                except:
+                    pass
+                if start_date is None:
+                    try:
+                        end_date = start_date = du_parse(raw_date)
+                    except:
+                        start_date = end_date = None
+                if start_date is None:
+                    try:
+                        end_date = start_date = dp_parse(raw_date)
+                    except:
+                        start_date = end_date = None
+
+        if start_date is None:
+            print(f"ERROR parsing date '{raw_date}' for '{title}'")
+
         return start_date, end_date
 
     def scrape_tournaments_by_year(self, year):
+        print(year)
         year_url = f"{URLBASE}Tournament/Tournaments_{year}.html"
         year_page = requests.get(year_url)
         year_soup = BeautifulSoup(year_page.content, "html.parser")
@@ -91,7 +91,9 @@ class Tournament_Scraper:
             tournaments = table.findAll(
                 "div", {"class": re.compile('TCTT_ligne*')})[2:]
             for tourney in tournaments:
-                scrape_tournament_by_id() # TODO get id from line
+                cells = tourney.find_all("p")
+                tid = int(cells[0].string)
+                self.scrape_tournament_by_id(tid, countries=cells[6].string)
 
     def get_bs4_tournament_page(self, tournament_id):
         """Get the BeautifulSoup4 object for a tournament web page, given
@@ -101,28 +103,28 @@ class Tournament_Scraper:
         return BeautifulSoup(tournament_page.content, "html.parser")
 
 
-    def scrape_tournament_by_id(self, tournament_id):
+    def scrape_tournament_by_id(self, tournament_id, countries=None):
         """given an old tournament_id, scrape the webpage, and create
         a database item with the metadata. Then scrape the results"""
-        last_scraped = self.session.query(
-            Tournament.scraped_on
-            ).filter_by(old_id=tournament_id).first()
+        t = self.session.query(
+            Tournament).filter_by(old_id=tournament_id).first()
 
-        if last_scraped is not None:
-            print(f"we already scraped this tournament at {last_scraped}")
-            return True
+        is_new = t is None
+        if is_new:
+            t = Tournament()
+            print(f"scraping tournament {tournament_id}")
+        else:
+            print(f"re-scraping '{t.title}', last scraped {t.scraped_on}")
 
         tournament_soup = self.get_bs4_tournament_page(tournament_id)
         tournament_info = tournament_soup.findAll("td")
 
         # get mers weight
-        weight_pattern = re.compile(r'^(\d+,\d+)\(')
-        weight_string = tournament_info[12].text.strip().title()
-        weight_match = weight_pattern.search(weight_string)
-        weight = float(weight_match.group(1).replace(
-            ',', '.')) if weight_match else 'NaN'
-
-        t = Tournament()
+        try:
+            weight_string = tournament_info[12].string.strip().split("(")[0]
+            weight = float(weight_string.replace(',', '.'))
+        except:
+            weight = 0
 
         place = tournament_info[6].text.lstrip().split("(")[0]
         country_string = tournament_info[6].findAll("a")[0]["href"]
@@ -149,12 +151,13 @@ class Tournament_Scraper:
 
         t.ruleset = RulesetClass.Riichi
         t.player_count = int(tournament_info[10].text.strip())
+        t.ema_country_count = countries # TODO if this is none, calculate it manually
         t.mers = weight
         t.old_id = tournament_id
         t.scraped_on = datetime.now()
 
-        # add tournament to db
-        self.session.add(t)
+        if is_new: # add tournament to db if it's new
+            self.session.add(t)
         self.session.commit()
 
         # scrape results for tournament
@@ -162,14 +165,22 @@ class Tournament_Scraper:
 
     def add_player(self, ema_id):
         # if ema_id is zero, create player with blank ema_id
-        p = Player()
+        p = self.session.query(Player).filter_by(ema_id=ema_id).first()
+        is_new = p is None
+        if is_new:
+            p = Player()
         page = requests.get(f"{URLBASE}Players/{ema_id}.html")
-        dom = BeautifulSoup(page.content, "html.parser")
-        rows = dom.findAll(
-            "div", {"class": "contentpaneopen"}
-            )[0].find("table").find_all("tr")
         p.ema_id = ema_id
+        pic = None
         try:
+            dom = BeautifulSoup(page.content, "html.parser")
+            rows = dom.findAll(
+                "div", {"class": "contentpaneopen"}
+                )[0].find("table").find_all("tr")
+            p.calling_name = rows[2].find_all("td")[1].string
+            names = p.calling_name.split(" ")
+            p.sorting_name = names[-1] + ", " + "  ".join(names[0:-1])
+            pic = rows[0].find("img").attrs["src"]
             flag_string = rows[3].find("img").attrs["src"]
             matches = country_pattern.search(flag_string)
             iso2 = matches[1]
@@ -194,15 +205,11 @@ class Tournament_Scraper:
         except:
             pass
 
-        p.calling_name = rows[2].find_all("td")[1].string
         # just guess that the family name is the word after the last space
-        names = p.calling_name.split(" ")
-        p.sorting_name = names[-1] + ", " + "  ".join(names[0:-1])
-        pic = rows[0].find("img").attrs["src"]
         p.profile_pic = None if pic == "photo/Vide.jpg" else pic
-        self.session.add(p)
+        if is_new:
+            self.session.add(p)
         return p
-
 
     def extract_tournament_results_from_page(self, t, tournament_soup):
         """Enter results for tournament. given the Tournament object
@@ -221,12 +228,24 @@ class Tournament_Scraper:
             rank = int(
                 1000 * (t.player_count - position) / (t.player_count - 1)
                 )
+            pt = None
             if player_id:
-                p = self.session.query(Player).filter_by(ema_id=player_id).first()
+                p = self.session.query(Player).filter_by(
+                    ema_id=player_id).first()
                 if p is None:
                     p = self.add_player(player_id)
-                    # TODO add sorting_name here
+                    if p.calling_name is None:
+                        p.calling_name = result_content[3].string.title() + \
+                            ", " + result_content[2].string.title()
+
+                    p.sorting_name = result_content[2].string.title() + \
+                        " " + result_content[3].string.title()
+
                     self.session.commit()
+                else:
+                    # check whether we've already got this score
+                    pt = self.session.query(PlayerTournament).filter_by(
+                        tournament_id=t.id, player_id=p.id).first()
                 was_ema = True
             else:
                 p = Player()
@@ -235,9 +254,12 @@ class Tournament_Scraper:
                 self.session.add(p)
                 self.session.commit()
                 was_ema = False
+            is_new = pt is None
+            if is_new:
+                pt = PlayerTournament()
 
             cid = p.country_id
-            pt = PlayerTournament()
+
             pt.player = p
             pt.tournament = t
             pt.score = score
@@ -245,7 +267,8 @@ class Tournament_Scraper:
             pt.base_rank = rank
             pt.was_ema = was_ema
             pt.country_id = cid
-            self.session.add(pt)
+            if is_new:
+                self.session.add(pt)
             self.session.commit()
 
     def scrape_players_by_country(self, country):
