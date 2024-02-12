@@ -52,6 +52,7 @@ class PlayerTournament(Base):
         ForeignKey("tournament.id"), primary_key=True
     )
     score: Mapped[int]
+    table_points: Mapped[Optional[int]]
     position: Mapped[int]
     base_rank: Mapped[int]
     was_ema: Mapped[bool]
@@ -75,6 +76,10 @@ class Player(Base):
     local_club: Mapped[Optional[str]]
     local_club_url: Mapped[Optional[str]]
     profile_pic: Mapped[Optional[str]]
+    official_mcr_rank: Mapped[Optional[int]]
+    official_riichi_rank: Mapped[Optional[int]]
+    mcr_rank: Mapped[Optional[int]]
+    riichi_rank: Mapped[Optional[int]]
 
     country: Mapped[Optional[Country]] = relationship(back_populates="players")
     tournaments: Mapped[List[PlayerTournament]] = relationship(
