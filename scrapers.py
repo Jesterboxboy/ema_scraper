@@ -100,6 +100,13 @@ class Tournament_Scraper:
         its old_id"""
         tournament_url = f"{URLBASE}Tournament/TR_RCR_{tournament_id}.html"
         tournament_page = requests.get(tournament_url)
+        if not tournament_page.ok:
+            # not a riichi tournament, so try mcr
+            tournament_url = f"{URLBASE}Tournament/TR_{tournament_id}.html"
+            tournament_page = requests.get(tournament_url)
+            if not tournament_page.ok:
+                print(f"ERROR failed to find page for tournament {tournament_id}")
+
         return BeautifulSoup(tournament_page.content, "html.parser")
 
 
@@ -118,6 +125,10 @@ class Tournament_Scraper:
 
         tournament_soup = self.get_bs4_tournament_page(tournament_id)
         tournament_info = tournament_soup.findAll("td")
+
+        # set ruleset
+        is_mcr = tournament_info[14].string == "MCR"
+        t.ruleset = RulesetClass.MCR if is_mcr else RulesetClass.Riichi
 
         # get mers weight
         try:
@@ -143,13 +154,11 @@ class Tournament_Scraper:
         # Behaves nicely, even if there's more than one comma in place
         # As long as the country name doesn't have a comma in it
         t.place = ", ".join(place.split(",")[0:-1])
-
         t.raw_date = tournament_info[8].text.strip().title()
         t.title = tournament_info[4].text.strip().title()
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
         t.effective_end_date = t.end_date
 
-        t.ruleset = RulesetClass.Riichi
         t.player_count = int(tournament_info[10].text.strip())
         t.ema_country_count = countries # TODO if this is none, calculate it manually
         t.mers = weight
@@ -214,6 +223,13 @@ class Tournament_Scraper:
     def extract_tournament_results_from_page(self, t, tournament_soup):
         """Enter results for tournament. given the Tournament object
         and BS4 web page"""
+
+        # TODO TOFIX seems to be adding non-EMA players to the db three times
+
+        self.session.query(PlayerTournament).filter_by(tournament=t).delete()
+        self.session.commit()
+        is_mcr = t.ruleset == RulesetClass.MCR
+
         results_table = tournament_soup.findAll(
             "div", {"class": "TCTT_lignes"})[0]
         results = results_table.findAll(
@@ -225,9 +241,17 @@ class Tournament_Scraper:
                 result_content[1].text.strip()
             score = 0 if result_content[6].text.strip() == '-' else \
                 int(result_content[6].text.strip())
-            rank = int(
-                1000 * (t.player_count - position) / (t.player_count - 1)
-                )
+
+            # if it's MCR, grab table points too
+            if is_mcr:
+                table_points = 0 if result_content[5].text.strip() == '-' else \
+                    int(result_content[5].text.strip())
+            else:
+                table_points = None
+
+            rank = round(
+                1000 * (t.player_count - position) / (t.player_count - 1),
+                0)
             pt = None
             if player_id:
                 p = self.session.query(Player).filter_by(
@@ -249,8 +273,10 @@ class Tournament_Scraper:
                 was_ema = True
             else:
                 p = Player()
-                p.calling_name = "TBD" # TODO
-                p.sorting_name = "TBD" # TODO
+                p.calling_name = result_content[3].string.title() + \
+                    ", " + result_content[2].string.title()
+                p.sorting_name = result_content[2].string.title() + \
+                    " " + result_content[3].string.title()
                 self.session.add(p)
                 self.session.commit()
                 was_ema = False
@@ -262,6 +288,7 @@ class Tournament_Scraper:
 
             pt.player = p
             pt.tournament = t
+            pt.table_points = table_points
             pt.score = score
             pt.position = position
             pt.base_rank = rank
@@ -270,26 +297,3 @@ class Tournament_Scraper:
             if is_new:
                 self.session.add(pt)
             self.session.commit()
-
-    def scrape_players_by_country(self, country):
-        # TODO doesn't work yet
-        url = f"{URLBASE}Country/{country}_RCR.html"
-        page = requests.get(url)
-        soup = BeautifulSoup(page.content, "html.parser")
-
-        table = soup.findAll("div", {"class": "TCTT_lignes"})[0]
-        # skip first row because it is a header
-        results = table.findAll("div")[1:]
-        for result in results:
-            data = result.findAll("p")
-
-            ema_id = data[2].text.strip()
-            last_name = data[3].text.strip().title()
-            first_name = data[4].text.strip().title()
-
-            # TODO create score in db
-
-        url = f"{URLBASE}Players/{country}_History.html"
-        page = requests.get(url)
-        soup = BeautifulSoup(page.content, "html.parser")
-        results = table.findAll("div")[1:]
