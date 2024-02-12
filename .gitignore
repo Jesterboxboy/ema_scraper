@@ -4,3 +4,7 @@ hardcopy*
 *.sqlite3
 .vscode/
 
+*.pyc
+migrations/versions/
+migrations/versions/__pycache__
+.spyproject/
