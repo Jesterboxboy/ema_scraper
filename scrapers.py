@@ -2,6 +2,7 @@
 
 # Based on data_scrapers.py from Jesterboxboy
 
+import logging
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -20,6 +21,13 @@ URLBASE = "http://silk.mahjong.ie/ranking/"
 class Tournament_Scraper:
     def __init__(self, session):
         self.session = session
+
+    def french_float(self, number_string):
+        return float(number_string.replace(',', '.'))
+
+    def dash_to_0(self, number_string):
+        number_string = number_string.strip()
+        return 0 if number_string == '-' else number_string
 
     def add_country(self, iso2, old3):
         test_exists = self.session.query(Country).filter_by(id=iso2).first()
@@ -42,9 +50,9 @@ class Tournament_Scraper:
 
     def parse_dates(self, raw_date, title):
         """we have dates in a bunch of formats, so this tries different tools
-        in turn. Some dates don't have a year: but year is in tourney title,
-        so we need TODO something clever with that"""
-        # TODO get tourney year from tourney title if needed
+        in turn. Some recorded dates are just weird, so there's a bunch of
+        one-off handling as the cleanest way to handle them, rather than
+        a bunch of convoluted logic which would have the same outcome"""
         match raw_date:
             case "19-20-21 Apr. 2019":
                 start_date = datetime(2019, 4, 19)
@@ -52,6 +60,12 @@ class Tournament_Scraper:
             case "23-24 Mars 2019":
                 start_date = datetime(2019, 3, 23)
                 end_date = datetime(2019, 3, 24)
+            case "31.May-2.Jun":
+                start_date = datetime(2019, 5, 31)
+                end_date = datetime(2019, 6, 2)
+            case "31-01 Aug-Sep. 2019":
+                start_date = datetime(2019, 8, 31)
+                end_date = datetime(2019, 9, 1)
             case _:
                 start_date = end_date = None
                 try:
@@ -72,12 +86,12 @@ class Tournament_Scraper:
                         start_date = end_date = None
 
         if start_date is None:
-            print(f"ERROR parsing date '{raw_date}' for '{title}'")
+            logging.error(f"can't date '{raw_date}' for '{title}'")
 
         return start_date, end_date
 
     def scrape_tournaments_by_year(self, year):
-        print(year)
+        print(f"getting tournaments for {year}")
         year_url = f"{URLBASE}Tournament/Tournaments_{year}.html"
         year_page = requests.get(year_url)
         year_soup = BeautifulSoup(year_page.content, "html.parser")
@@ -85,32 +99,40 @@ class Tournament_Scraper:
         table_raw = year_soup.findAll(
             "div", {"class": "Tableau_CertifiedTournament"})
         if table_raw is not None and len(table_raw) > 0:
-            #grab the riichi table
-            table = table_raw[1] # TODO this is forcing selection of the riichi table
-            # skip first row because it is a header
-            tournaments = table.findAll(
-                "div", {"class": re.compile('TCTT_ligne*')})[2:]
-            for tourney in tournaments:
-                cells = tourney.find_all("p")
-                tid = int(cells[0].string)
-                self.scrape_tournament_by_id(tid, countries=cells[6].string)
+            # iterate over each ruleset
+            # we need to specify whether it's MCR or RCR,
+            # as ids are duplicated between them!!!
+            ruleset = RulesetClass.MCR
+            for table in table_raw:
+                tournaments = table.findAll(
+                    "div", {"class": re.compile('TCTT_ligne*')})[2:]
+                for tourney in tournaments:
+                    cells = tourney.find_all("p")
+                    tid = int(cells[0].string)
+                    self.scrape_tournament_by_id(
+                        tid,
+                        countries=cells[6].string,
+                        ruleset=ruleset,
+                        )
+                ruleset = RulesetClass.Riichi
 
-    def get_bs4_tournament_page(self, tournament_id):
+    def get_bs4_tournament_page(self, tournament_id, ruleset):
         """Get the BeautifulSoup4 object for a tournament web page, given
         its old_id"""
-        tournament_url = f"{URLBASE}Tournament/TR_RCR_{tournament_id}.html"
+        prefix = "TR" if ruleset == RulesetClass.MCR else "TR_RCR"
+        tournament_url = f"{URLBASE}Tournament/{prefix}_{tournament_id}.html"
         tournament_page = requests.get(tournament_url)
         if not tournament_page.ok:
             # not a riichi tournament, so try mcr
             tournament_url = f"{URLBASE}Tournament/TR_{tournament_id}.html"
             tournament_page = requests.get(tournament_url)
             if not tournament_page.ok:
-                print(f"ERROR failed to find page for tournament {tournament_id}")
+                logging.error(f"ERROR failed to find page for tournament {tournament_id}")
 
         return BeautifulSoup(tournament_page.content, "html.parser")
 
 
-    def scrape_tournament_by_id(self, tournament_id, countries=None):
+    def scrape_tournament_by_id(self, tournament_id, ruleset, countries=None):
         """given an old tournament_id, scrape the webpage, and create
         a database item with the metadata. Then scrape the results"""
         t = self.session.query(
@@ -119,21 +141,17 @@ class Tournament_Scraper:
         is_new = t is None
         if is_new:
             t = Tournament()
-            print(f"scraping tournament {tournament_id}")
+            print(f"scraping {ruleset} tournament {tournament_id}")
         else:
             print(f"re-scraping '{t.title}', last scraped {t.scraped_on}")
 
-        tournament_soup = self.get_bs4_tournament_page(tournament_id)
+        tournament_soup = self.get_bs4_tournament_page(tournament_id, ruleset)
         tournament_info = tournament_soup.findAll("td")
-
-        # set ruleset
-        is_mcr = tournament_info[14].string == "MCR"
-        t.ruleset = RulesetClass.MCR if is_mcr else RulesetClass.Riichi
 
         # get mers weight
         try:
             weight_string = tournament_info[12].string.strip().split("(")[0]
-            weight = float(weight_string.replace(',', '.'))
+            weight = self.french_float(weight_string)
         except:
             weight = 0
 
@@ -154,6 +172,7 @@ class Tournament_Scraper:
         # Behaves nicely, even if there's more than one comma in place
         # As long as the country name doesn't have a comma in it
         t.place = ", ".join(place.split(",")[0:-1])
+        t.ruleset = ruleset
         t.raw_date = tournament_info[8].text.strip().title()
         t.title = tournament_info[4].text.strip().title()
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
@@ -234,24 +253,32 @@ class Tournament_Scraper:
             "div", {"class": "TCTT_lignes"})[0]
         results = results_table.findAll(
             "div", {"class": re.compile('TCTT_ligne*')})[1:]
+        rank_errors = 0
         for result in results:
             result_content = result.findAll("p")
-            position = int(result_content[0].text.strip())
-            player_id = 0 if result_content[1].text.strip() == '-' else \
-                result_content[1].text.strip()
-            score = 0 if result_content[6].text.strip() == '-' else \
-                int(result_content[6].text.strip())
+            position = int(self.dash_to_0(result_content[0].text)) or \
+                t.player_count
+            player_id = self.dash_to_0(result_content[1].text)
+            score = int(self.dash_to_0(result_content[6].text))
 
             # if it's MCR, grab table points too
             if is_mcr:
-                table_points = 0 if result_content[5].text.strip() == '-' else \
-                    int(result_content[5].text.strip())
+                table_points = self.french_float(self.dash_to_0(
+                    result_content[5].text))
             else:
                 table_points = None
 
-            rank = round(
-                1000 * (t.player_count - position) / (t.player_count - 1),
-                0)
+            if player_id == 0:
+                rank = 0
+            else:
+                # TODO if ranks are tied, the players will have teh same base_rank points,
+                #      BUT the position shown on the webpage are WRONG
+                #      eg if the top three places were tied, they'd be shown
+                #      as position 1,2,3 ! MCR 348 has two such ties
+                rank = round(
+                    1000 * (t.player_count - position) / (t.player_count - 1),
+                    0)
+
             pt = None
             if player_id:
                 p = self.session.query(Player).filter_by(
@@ -280,6 +307,17 @@ class Tournament_Scraper:
                 self.session.add(p)
                 self.session.commit()
                 was_ema = False
+
+            # check our base_rank calculation with the official one, log any discrepancies
+            official_rank = int(self.dash_to_0(result_content[7].text))
+            if rank != official_rank:
+                rank_errors += 1
+                logging.error(
+                    f"""Error in rank calculation for {p.sorting_name}.
+                    We calculated {rank}, but the official rank is {official_rank}
+                    Tournament is {t.title} {t.ruleset} {t.old_id}
+            """)
+
             is_new = pt is None
             if is_new:
                 pt = PlayerTournament()
@@ -297,3 +335,8 @@ class Tournament_Scraper:
             if is_new:
                 self.session.add(pt)
             self.session.commit()
+
+        if rank_errors == 0:
+            logging.info(f"All base_ranks correct for {t.title}")
+        else:
+            print(f"Errors found in base_ranks for {t.title} - see logfile for details")
