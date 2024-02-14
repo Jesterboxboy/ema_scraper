@@ -27,7 +27,13 @@ class Tournament_Scraper:
 
     def dash_to_0(self, number_string):
         number_string = number_string.strip()
-        return 0 if number_string == '-' else number_string
+        match number_string:
+            case '-':
+                return "0"
+            case 'N/A':
+                return "-999999"
+            case _:
+                return number_string
 
     def add_country(self, iso2, old3):
         test_exists = self.session.query(Country).filter_by(id=iso2).first()
@@ -66,6 +72,18 @@ class Tournament_Scraper:
             case "31-01 Aug-Sep. 2019":
                 start_date = datetime(2019, 8, 31)
                 end_date = datetime(2019, 9, 1)
+            case "28 Feb. 1Mar. 2015":
+                start_date = datetime(2015, 2, 28)
+                end_date = datetime(2015, 3, 1)
+            case "31 Jan. 1 Feb 2015":
+                start_date = datetime(2015, 1, 31)
+                end_date = datetime(2015, 2, 1)
+            case "26-27-28 May 2017":
+                start_date = datetime(2017, 3, 26)
+                end_date = datetime(2017, 3, 28)
+            case "15-16-17 June 2018":
+                start_date = datetime(2018, 6, 15)
+                end_date = datetime(2018, 6, 17)
             case _:
                 start_date = end_date = None
                 try:
@@ -119,8 +137,12 @@ class Tournament_Scraper:
     def get_bs4_tournament_page(self, tournament_id, ruleset):
         """Get the BeautifulSoup4 object for a tournament web page, given
         its old_id"""
-        prefix = "TR" if ruleset == RulesetClass.MCR else "TR_RCR"
-        tournament_url = f"{URLBASE}Tournament/{prefix}_{tournament_id}.html"
+        prefix = "TR_" if ruleset == RulesetClass.MCR else "TR_RCR_"
+
+        # TODO TOFIX if id < 10, then a 2-digit number is used in the URL
+        if tournament_id < 10:
+            prefix += "0"
+        tournament_url = f"{URLBASE}Tournament/{prefix}{tournament_id}.html"
         tournament_page = requests.get(tournament_url)
         if not tournament_page.ok:
             # not a riichi tournament, so try mcr
@@ -135,8 +157,9 @@ class Tournament_Scraper:
     def scrape_tournament_by_id(self, tournament_id, ruleset, countries=None):
         """given an old tournament_id, scrape the webpage, and create
         a database item with the metadata. Then scrape the results"""
-        t = self.session.query(
-            Tournament).filter_by(old_id=tournament_id).first()
+
+        t = self.session.query(Tournament).filter_by(
+            old_id=tournament_id, ruleset=ruleset).first()
 
         is_new = t is None
         if is_new:
@@ -178,7 +201,13 @@ class Tournament_Scraper:
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
         t.effective_end_date = t.end_date
 
-        t.player_count = int(tournament_info[10].text.strip())
+        if tournament_id == 269 and t.ruleset == RulesetClass.MCR:
+            # the player count on the original web page appears to be wrong
+            # for this one tournament VILLEJUIF OPEN 2017 - IN VINO VERITAS I
+            t.player_count = 84
+        else:
+            t.player_count = int(tournament_info[10].text.strip())
+
         t.ema_country_count = countries # TODO if this is none, calculate it manually
         t.mers = weight
         t.old_id = tournament_id
@@ -253,7 +282,15 @@ class Tournament_Scraper:
             "div", {"class": "TCTT_lignes"})[0]
         results = results_table.findAll(
             "div", {"class": re.compile('TCTT_ligne*')})[1:]
+        if len(results) != t.player_count:
+            logging.error(f"""
+Discrepancy between number of players ({t.player_count}) and
+number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
+""")
         rank_errors = 0
+        previous_position = 0
+        previous_table_points = 0
+        previous_score = 0
         for result in results:
             result_content = result.findAll("p")
             position = int(self.dash_to_0(result_content[0].text)) or \
@@ -268,13 +305,22 @@ class Tournament_Scraper:
             else:
                 table_points = None
 
-            if player_id == 0:
+            # if ranks are tied, the players will have teh same base_rank points,
+            # BUT the position shown on the webpage are WRONG
+            # eg if the top three places were tied, they'd be shown
+            # as position 1,2,3 ! MCR 348 has two such ties
+            if previous_position > 0 \
+                and table_points == previous_table_points \
+                and score == previous_score:
+                    position = previous_position
+            else:
+                previous_position = position
+                previous_score = score
+                previous_table_points = table_points
+
+            if player_id == "0":
                 rank = 0
             else:
-                # TODO if ranks are tied, the players will have teh same base_rank points,
-                #      BUT the position shown on the webpage are WRONG
-                #      eg if the top three places were tied, they'd be shown
-                #      as position 1,2,3 ! MCR 348 has two such ties
                 rank = round(
                     1000 * (t.player_count - position) / (t.player_count - 1),
                     0)
@@ -336,7 +382,5 @@ class Tournament_Scraper:
                 self.session.add(pt)
             self.session.commit()
 
-        if rank_errors == 0:
-            logging.info(f"All base_ranks correct for {t.title}")
-        else:
-            print(f"Errors found in base_ranks for {t.title} - see logfile for details")
+        if rank_errors > 0:
+            print(f"{rank_errors} errors in base_ranks for {t.title}; logfile has details")

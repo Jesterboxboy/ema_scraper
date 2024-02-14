@@ -1,0 +1,65 @@
+http://mahjong-europe.org/ranking/Tournament/TR_269.html
+This tournament claims 85 players, but lists 84. This upsets the ranking calculation.
+I've put a manual kludge in the code to deal with this.
+
+UK OPEN RIICHI 2017
+http://mahjong-europe.org/ranking/Tournament/TR_RCR_161.html
+Ian Fraser got 333 ranking points, pretty sure that should be 359 (came =26th out of 40)
+Norma Todd got 333 ranking points, pretty sure that should be 308 (came 28th out of 40)
+
+TRI NITRO TOURNAMENT: THIRD DETONATION !
+http://mahjong-europe.org/ranking/Tournament/TR_RCR_76.html
+Lavallee Sebastian got 200 ranking points, but should be 257 (came 27th out of 36)
+Horwat Vadim got 229 ranking points, but should be 200 (came 29th out of 36)
+
+3RD OPEN ITALIAN CHAMPIONSHIP
+http://mahjong-europe.org/ranking/Tournament/TR_40.html
+Foschi Elisa got 113 ranking points, but should be 127 (came =63rd out of 72)
+Actually, check whether this is the right way to deal with ties, and all the others are wrong!!!
+
+4TH HUNGARIAN OPEN / SISI CUP 2009 VOL. I
+https://silk.mahjong.ie/ranking/Tournament/TR_53.html
+VÁRNAI ESZTER got 571 points, but should be 587 (came =27th out of 64) - same situation as Foschi Elisa above
+
+All of the following are ties too:
+
+ERROR:root:Error in rank calculation for Broeder Ingrid.
+                    We calculated 411.0, but the official rank is 402
+                    Tournament is Open European Mahjong Championship 2005 RulesetClass.MCR 1
+            
+ERROR:root:Error in rank calculation for Jenjahn Monika.
+                    We calculated 159.0, but the official rank is 150
+                    Tournament is Open European Mahjong Championship 2005 RulesetClass.MCR 1
+            
+ERROR:root:Error in rank calculation for Jaritz Gerti.
+                    We calculated 540.0, but the official rank is 524
+                    Tournament is Hungarian Open 2006 RulesetClass.MCR 9
+            
+ERROR:root:Error in rank calculation for Broers Eveline.
+                    We calculated 506.0, but the official rank is 494
+            
+ERROR:root:Error in rank calculation for VÃ¡rnai Eszter.
+                    We calculated 587.0, but the official rank is 571
+                    Tournament is 4Th Hungarian Open / Sisi Cup 2009 Vol. I RulesetClass.MCR 53
+
+VIENNA OPEN RIICHI TOURNAMENT 2017
+https://silk.mahjong.ie/ranking/Tournament/TR_RCR_164.html
+32 Players played, but only 31 results are given.
+
+COPENHAGEN RIICHI OPEN 2019
+http://mahjong-europe.org/ranking/Tournament/TR_RCR_219.html
+16 players played, only 15 results listed
+
+SWEDISH OPEN MCR MAHJONG CHAMPIONSHIP 2023
+https://silk.mahjong.ie/ranking/Tournament/TR_373.html
+36 participants, 38 results (2 non-attendees given 0 scores)
+
+RUSSIAN OPEN MAHJONG CHAMPIONSHIP 2008
+http://mahjong-europe.org/ranking/Tournament/TR_41.html
+24 participants, 18 results
+
+Discrepancy between number of players (136) and
+number of results (133) for Open European Championship 2007, RulesetClass.MCR 22
+
+Discrepancy between number of players (24) and
+number of results (18) for Russian Open Mahjong Championship 2008, RulesetClass.MCR 41
