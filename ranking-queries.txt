@@ -1,0 +1,13 @@
+This tournament claims 85 players, but lists 84. This upsets the ranking calculation.
+I've put a manual kludge in the code to deal with this.
+http://mahjong-europe.org/ranking/Tournament/TR_269.html
+
+http://mahjong-europe.org/ranking/Tournament/TR_RCR_161.html
+UK OPEN RIICHI 2017
+Ian Fraser got 333 ranking points, pretty sure that should be 359 (came =26th out of 40)
+Norma Todd got 333 ranking points, pretty sure that should be 308 (came 28th out of 40)
+
+TRI NITRO TOURNAMENT: THIRD DETONATION !
+http://mahjong-europe.org/ranking/Tournament/TR_RCR_76.html
+Lavallee Sebastian got 200 ranking points, but should be 257 (came 27th out of 36)
+Horwat Vadim got 229 ranking points, but should be 200 (came 29th out of 36)
