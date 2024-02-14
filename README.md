@@ -18,7 +18,8 @@ pip -r requirements.txt
 ## Files
 
 [models.py](models.py) contains the sqlalchemy specification for the database that will hold
-all the data on players and tournaments. SQLAlchemy implements and enforces
+all the data on players and tournaments.
+[SQLAlchemy](https://www.sqlalchemy.org/) implements and enforces
 all the constraints and checks of a relational database, even if the underlying
 database is sqlite3 (as it is here).
 
@@ -33,9 +34,10 @@ the test run, and contains the datetime stamp of when the run began, and any war
 
 [ranking-queries.txt](ranking-queries.txt) lists the historical discrepancies I found when trying to reproduce all the rankings.
 Note that almost all historic data can be reproduced. Only a small number of tied places that have non-standard
-base-rank calculations remain, and none of these contribute to live rankins.
+base-rank calculations remain, and none of these contribute to live rankings.
 
-[alembic.ini](alembic.ini) is the control file for the `alembic` package, which makes it
+[alembic.ini](alembic.ini) is the control file for the
+[alembic](https://pypi.org/project/alembic/) package, which makes it
 easy to manage changes to the database structure.
 
 [migrations](migrations) subfolder contains the control files created by `alembic`, that change the
@@ -50,12 +52,16 @@ and *how* it could be done
 
 ## To initialise the database
 
-From the command line: `alembic --autogenerate -m "initialise db"`
-Then edit the migration file in migrations/versions and
+At the moment, the filepath is hard-coded in
+ [test.py](test.py) and [migrations/env.py](migrations/env.py). You must
+ change the filepath in both places, to get it working for you.
+
+Then, from the command line: `alembic --autogenerate -m "initialise db"`
+
+Then edit the migration file that this creates in `migrations/versions` and
 remove the `metadata=MetaData(),` clause from the `ruleset` line
 (this is a known alembic bug, and this is the far-from-satisfactory workaround)
 
 Then:
 `alembic upgrade head`
-will create the database file. At the moment, the pathway is hard-coded in
- [test.py](test.py) and [env.py](env.py)- you'll need to change that, to get it working!
+will create the database file.
