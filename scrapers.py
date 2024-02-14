@@ -137,8 +137,12 @@ class Tournament_Scraper:
     def get_bs4_tournament_page(self, tournament_id, ruleset):
         """Get the BeautifulSoup4 object for a tournament web page, given
         its old_id"""
-        prefix = "TR" if ruleset == RulesetClass.MCR else "TR_RCR"
-        tournament_url = f"{URLBASE}Tournament/{prefix}_{tournament_id}.html"
+        prefix = "TR_" if ruleset == RulesetClass.MCR else "TR_RCR_"
+
+        # TODO TOFIX if id < 10, then a 2-digit number is used in the URL
+        if tournament_id < 10:
+            prefix += "0"
+        tournament_url = f"{URLBASE}Tournament/{prefix}{tournament_id}.html"
         tournament_page = requests.get(tournament_url)
         if not tournament_page.ok:
             # not a riichi tournament, so try mcr
@@ -153,6 +157,7 @@ class Tournament_Scraper:
     def scrape_tournament_by_id(self, tournament_id, ruleset, countries=None):
         """given an old tournament_id, scrape the webpage, and create
         a database item with the metadata. Then scrape the results"""
+
         t = self.session.query(Tournament).filter_by(
             old_id=tournament_id, ruleset=ruleset).first()
 

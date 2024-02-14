@@ -19,11 +19,13 @@ engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 with Session(engine) as session:
     rating = Tournament_Scraper(session)
 
-    for year in list(range(2010, 2025)):
+    for year in list(range(2004, 2010)):
         rating.scrape_tournaments_by_year(year)
 
 print("done")
 sys.exit(0)
+
+#2010-2025 done
 
 # intentionally not running this line, just keeping it for debugging
 rating.scrape_tournament_by_id(69, RulesetClass.Riichi)
