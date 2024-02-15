@@ -324,15 +324,24 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                 previous_score = score
                 previous_table_points = table_points
 
+
+            pt = None
             if player_id == "0":
+                was_ema = False
                 rank = 0
+                p = Player()
+                p.ema_id = -1
+                p.calling_name = result_content[3].string.title() + \
+                    ", " + result_content[2].string.title()
+                p.sorting_name = result_content[2].string.title() + \
+                    " " + result_content[3].string.title()
+                self.session.add(p)
+                self.session.commit()
             else:
+                was_ema = True
                 rank = round(
                     1000 * (t.player_count - position) / (t.player_count - 1),
                     0)
-
-            pt = None
-            if player_id:
                 p = self.session.query(Player).filter_by(
                     ema_id=player_id).first()
                 if p is None:
@@ -349,23 +358,13 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                     # check whether we've already got this score
                     pt = self.session.query(PlayerTournament).filter_by(
                         tournament_id=t.id, player_id=p.id).first()
-                was_ema = True
-            else:
-                p = Player()
-                p.calling_name = result_content[3].string.title() + \
-                    ", " + result_content[2].string.title()
-                p.sorting_name = result_content[2].string.title() + \
-                    " " + result_content[3].string.title()
-                self.session.add(p)
-                self.session.commit()
-                was_ema = False
 
             # check our base_rank calculation with the official one, log any discrepancies
             official_rank = int(self.dash_to_0(result_content[7].text))
             if rank != official_rank:
                 rank_errors += 1
                 logging.error(
-                    f"""Error in rank calculation for {p.sorting_name}.
+                    f"""Discrepancy in base-rank calculation for {p.sorting_name}.
                     We calculated {rank}, but the official rank is {official_rank}
                     Tournament is {t.title} {t.ruleset} {t.old_id}
             """)
@@ -389,4 +388,4 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
             self.session.commit()
 
         if rank_errors > 0:
-            print(f"{rank_errors} errors in base_ranks for {t.title}; logfile has details")
+            print(f"{rank_errors} base-rank discrepancies for {t.title}; logfile has details")

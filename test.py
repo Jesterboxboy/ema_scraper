@@ -21,19 +21,18 @@ logging.info(datetime.now())
 engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
-    for year in list(range(2005, 2025)):
+    # scrape all tournaments, both rulesets
+    for year in list(range(2005, 2006)):
         rating = Tournament_Scraper(session)
         rating.scrape_tournaments_by_year(year)
 
-    #ranker = RankingEngine(session)
-    #ranker.weight_tournaments(datetime(2024,2,14))
+    ranker = RankingEngine(session)
+    ranker.weight_tournaments(datetime(2024,2,15))
 
 print("done")
 sys.exit(0)
 
 
-
-#2010-2025 done
 
 # intentionally not running this line, just keeping it for debugging
 rating.scrape_tournament_by_id(69, RulesetClass.Riichi)

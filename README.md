@@ -66,9 +66,9 @@ The `autogenerate` means that alembic will read the (models.py)[models.py] file,
 compare the implied database structure to the previous version, and create a
 database migration file to update the database from the previous version to a
 new version that satisfies `models.py`. So you can change the database structure
-just by changing the code in `models.py` and running `alembic --autogenerate`.
+just by changing the code in `models.py` and running `alembic revision --autogenerate`.
 
-The first time you run `alembic --autogenerate` you will need to edit the
+The first time you run `alembic revision --autogenerate` you will subsequently need to edit the
 migration file that this creates in `migrations/versions`. You must
 remove the `metadata=MetaData(),` clause from the `ruleset` line
 (this is a known alembic bug, and this is the far-from-satisfactory workaround)
