@@ -1,9 +1,13 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
 from datetime import datetime
 import sys
+
 from scrapers import Tournament_Scraper
 from models import RulesetClass
+from ranking import RankingEngine
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
 
 import logging
 logging.basicConfig(
@@ -17,13 +21,17 @@ logging.info(datetime.now())
 engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
-    rating = Tournament_Scraper(session)
+    #for year in list(range(2004, 2024)):
+    #    rating = Tournament_Scraper(session)
+    #    rating.scrape_tournaments_by_year(year)
 
-    for year in list(range(2004, 2010)):
-        rating.scrape_tournaments_by_year(year)
+    ranker = RankingEngine(session)
+    ranker.weight_tournaments(datetime(2024,2,14))
 
 print("done")
 sys.exit(0)
+
+
 
 #2010-2025 done
 

@@ -1,10 +1,9 @@
 import enum
-from sqlalchemy import Enum, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.associationproxy import AssociationProxy
 from datetime import datetime
 from typing import Optional, List
+
+from sqlalchemy import Enum, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import String
 
 
@@ -56,7 +55,8 @@ class PlayerTournament(Base):
     position: Mapped[int]
     base_rank: Mapped[int]
     was_ema: Mapped[bool]
-
+    aged_rank: Mapped[Optional[float]]
+    aged_mers: Mapped[Optional[float]]
     # we want to record what the country of affiliation was at the time of
     # the event, as this is used to calculate MERS. Affiliation may change
     # after the event, so we need the historic, not live, value
@@ -85,10 +85,6 @@ class Player(Base):
     tournaments: Mapped[List[PlayerTournament]] = relationship(
         back_populates="player",
         )
-    tournament_weights: AssociationProxy[List[float]] = association_proxy(
-        "tournaments",
-        "weighting",
-        )
 
 
 class Tournament(Base):
@@ -108,7 +104,7 @@ class Tournament(Base):
     ema_country_count: Mapped[Optional[int]]
     scraped_on: Mapped[Optional[datetime]]
 
-    weighting: Mapped[Optional[int]] # will be calculated live
+    aged_mers: Mapped[Optional[float]] # will be calculated live
 
     country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
     country: Mapped[Optional[Country]] = relationship(back_populates="tournaments")

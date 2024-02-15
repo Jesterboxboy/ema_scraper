@@ -52,35 +52,47 @@
 #
 # ================================================
 
-from datetime import date
+from datetime import date, datetime
 from math import ceil
-from sqlalchemy import sql_execute, sql_query_all
 
-def yearsPrior(years, toDate):
-    # this is a bit contrived, but it doesn't choke on leap years
-    return toDate + (date(toDate.year + years, 1, 1) - date(toDate.year, 1, 1))
+from sqlalchemy import update
 
-# For all tournaments, given reckoning day, calculate tournament weighting
-def weight_tournaments(reckoning_day):
-    expiry_day = yearsPrior(2, reckoning_day)
-    halving_day = yearsPrior(1, reckoning_day)
-    limits = {"expiry": expiry_day, "reducer": halving_day}
-    check2 = sql_execute(
-        "UPDATE tournaments SET weighting = 0 IF effective_end_date < :expiry",
-        limits)
-    check3 = sql_execute(
-        "UPDATE tournaments SET weighting = 0.5 IF effective_end_date < :reducer AND effective_end_date >= :expiry",
-        limits)
-    check4 = sql_execute(
-        "UPDATE tournaments SET weighting = 1 IF age >= :reducer",
-        limits)
-    check5 = sql_execute(
-        "UPDATE tournaments_x_players JOIN tournaments ON tournament_id SET tournaments_x_players.weighting=tournaments.weighting")
+from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 
+class RankingEngine:
+    def __init__(self, db):
+        self.db = db
+
+    def yearsPrior(self, years: int, toDate: datetime) -> datetime:
+        # this is a bit contrived, but it doesn't choke on leap years
+        return toDate + (date(toDate.year - years, 1, 1) - date(toDate.year, 1, 1))
+
+    def calculate_base_rank(self, position: int, player_count: int):
+        return round(1000 * (player_count - position) / (player_count - 1))
+
+    # For all tournaments, given reckoning day, age the tournament MERS weighting
+    def weight_tournaments(self, reckoning_day: datetime):
+        expiry_day = self.yearsPrior(2, reckoning_day)
+        halving_day = self.yearsPrior(1, reckoning_day)
+        self.db.execute(update(Tournament).
+            where(Tournament.effective_end_date < expiry_day).
+            values(aged_mers = 0.0))
+        self.db.execute(update(Tournament).
+            where(Tournament.effective_end_date >= expiry_day).
+            where(Tournament.effective_end_date < halving_day).
+            values(aged_mers = Tournament.mers * 0.5))
+        self.db.execute(update(Tournament).
+            where(Tournament.effective_end_date > halving_day).
+            values(aged_mers = Tournament.mers))
+        self.db.execute(update(PlayerTournament).values(aged_mers =
+            Tournament.aged_mers).
+            where(Tournament.id == PlayerTournament.tournament_id))
+        self.db.execute(update(PlayerTournament).values(aged_rank =
+            PlayerTournament.aged_mers * PlayerTournament.base_rank))
+        self.db.commit()
 
 def get_all_tournaments_for_player(player_id):
-    results = sql_query_all("SELECT tournament_id, weighting, ruleset, base_rank FROM tournaments_x_players WHERE player_id=$1 SORT BY end_date DESC", player_id)
-    return results
+    return "SELECT tournament_id, aged_mers, ruleset, base_rank FROM tournaments_x_players WHERE player_id=$1 SORT BY end_date DESC", player_id
 
 
 # For a given player, get list of all tournament IDs, base rank, and tournament weighting, that they have a tournament weighting > 0 for.
@@ -88,13 +100,13 @@ def get_ranked_tournaments_for_player(tournaments):
     if len(tournaments) < 2:
         return []
     while len(tournaments) < 5:
-        tournaments.push({'tournament_id': 0, 'weighting': 1, 'base_rank': 0})
+        tournaments.push({'tournament_id': 0, 'aged_mers': 1, 'base_rank': 0})
     number_eligible = ceil(5 + 0.8*max(len(tournaments) - 5, 0))
     return tournaments[0:number_eligible]
 
 
 def get_eligible_tournaments_for_player(tournaments, ruleset):
-    filtered_tournaments = [t for t in tournaments if t.weighting > 0 and t.ruleset == ruleset]
+    filtered_tournaments = [t for t in tournaments if t.aged_mers > 0 and t.ruleset == ruleset]
     results = sorted(filtered_tournaments, key=lambda t: t.base_rank, reverse=True)
     return get_ranked_tournaments_for_player(results)
 

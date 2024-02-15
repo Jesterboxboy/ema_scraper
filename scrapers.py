@@ -305,7 +305,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
             else:
                 table_points = None
 
-            # if ranks are tied, the players will have teh same base_rank points,
+            # if ranks are tied, the players will have the same base_rank points,
             # BUT the position shown on the webpage are WRONG
             # eg if the top three places were tied, they'd be shown
             # as position 1,2,3 ! MCR 348 has two such ties
