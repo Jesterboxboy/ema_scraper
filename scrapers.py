@@ -13,6 +13,7 @@ from daterangeparser import parse as dr_parse
 import pycountry
 
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
+from ranking import RankingEngine
 
 country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')
@@ -278,7 +279,8 @@ class Tournament_Scraper:
         """Enter results for tournament. given the Tournament object
         and BS4 web page"""
 
-        # TODO TOFIX seems to be adding non-EMA players to the db three times
+        # TODO sometimes there's an image attached to  1st/2nd/3rd that
+        #      isn't attached to an individual player acount
 
         self.session.query(PlayerTournament).filter_by(tournament=t).delete()
         self.session.commit()
@@ -314,7 +316,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
             # if ranks are tied, the players will have the same base_rank points,
             # BUT the position shown on the webpage are WRONG
             # eg if the top three places were tied, they'd be shown
-            # as position 1,2,3 ! MCR 348 has two such ties
+            # as position 1,2,3 ! eg MCR 348 has two such ties
             if previous_position > 0 \
                 and table_points == previous_table_points \
                 and score == previous_score:
@@ -327,31 +329,41 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
 
             pt = None
             if player_id == "0":
+                # not an EMA-registered player
+
+                # here, we add on the ruleset, the tournament id, and the
+                # ranking position, to ensure that in teh database, this player
+                # is unique, and is attached to *this* tournament only
+                name = result_content[3].string.title() + \
+                    " " + result_content[2].string.title() + \
+                    str(t.ruleset).replace("RulesetClass.", " (") + \
+                    f"{t.old_id} {position}th)"
                 was_ema = False
                 rank = 0
-                p = Player()
-                p.ema_id = -1
-                p.calling_name = result_content[3].string.title() + \
-                    ", " + result_content[2].string.title()
-                p.sorting_name = result_content[2].string.title() + \
-                    " " + result_content[3].string.title()
-                self.session.add(p)
-                self.session.commit()
+                p = self.session.query(Player).filter_by(
+                    calling_name=name).filter_by(ema_id=-1).first()
+                if p is None:
+                    p = Player()
+                    p.ema_id = -1
+                    p.calling_name = name
+                    p.sorting_name = result_content[2].string.title() + \
+                        ", " + result_content[3].string.title()
+                    self.session.add(p)
+                    self.session.commit()
             else:
                 was_ema = True
-                rank = round(
-                    1000 * (t.player_count - position) / (t.player_count - 1),
-                    0)
+                rank = RankingEngine.calculate_base_rank(t.player_count,
+                                                         position)
                 p = self.session.query(Player).filter_by(
                     ema_id=player_id).first()
                 if p is None:
                     p = self.add_player(player_id)
                     if p.calling_name is None:
                         p.calling_name = result_content[3].string.title() + \
-                            ", " + result_content[2].string.title()
+                            " " + result_content[2].string.title()
 
                     p.sorting_name = result_content[2].string.title() + \
-                        " " + result_content[3].string.title()
+                        ", " + result_content[3].string.title()
 
                     self.session.commit()
                 else:
