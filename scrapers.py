@@ -12,8 +12,7 @@ from dateparser import parse as dp_parse
 from daterangeparser import parse as dr_parse
 import pycountry
 
-from models import Player, Tournament, PlayerTournament, Country, \
-                   RulesetClass as RC
+from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 from ranking import RankingEngine
 
 country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
@@ -128,7 +127,7 @@ class Tournament_Scraper:
             # iterate over each ruleset
             # we need to specify whether it's MCR or RCR,
             # as ids are duplicated between them!!!
-            ruleset = RC.MCR
+            ruleset = RulesetClass.MCR
             for table in table_raw:
                 tournaments = table.findAll(
                     "div", {"class": re.compile('TCTT_ligne*')})[2:]
@@ -140,12 +139,12 @@ class Tournament_Scraper:
                         countries=cells[6].string,
                         ruleset=ruleset,
                         )
-                ruleset = RC.Riichi
+                ruleset = RulesetClass.Riichi
 
     def get_bs4_tournament_page(self, tournament_id, ruleset):
         """Get the BeautifulSoup4 object for a tournament web page, given
         its old_id"""
-        prefix = "TR_" if ruleset == RC.MCR else "TR_RCR_"
+        prefix = "TR_" if ruleset == RulesetClass.MCR else "TR_RCR_"
 
         # TODO TOFIX if id < 10, then a 2-digit number is used in the URL
         if tournament_id < 10:
@@ -209,7 +208,7 @@ class Tournament_Scraper:
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
         t.effective_end_date = t.end_date
 
-        if tournament_id == 269 and t.ruleset == RC.MCR:
+        if tournament_id == 269 and t.ruleset == RulesetClass.MCR:
             # the player count on the original web page appears to be wrong
             # for this one tournament VILLEJUIF OPEN 2017 - IN VINO VERITAS I
             t.player_count = 84
@@ -285,7 +284,7 @@ class Tournament_Scraper:
 
         self.session.query(PlayerTournament).filter_by(tournament=t).delete()
         self.session.commit()
-        is_mcr = t.ruleset == RC.MCR
+        is_mcr = t.ruleset == RulesetClass.MCR
 
         results_table = tournament_soup.findAll(
             "div", {"class": "TCTT_lignes"})[0]
@@ -337,7 +336,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                 # is unique, and is attached to *this* tournament only
                 name = result_content[3].string.title() + \
                     " " + result_content[2].string.title() + \
-                    str(t.ruleset).replace("RC.", " (") + \
+                    str(t.ruleset).replace("RulesetClass.", " (") + \
                     f"{t.old_id} {position}th)"
                 was_ema = False
                 rank = 0
