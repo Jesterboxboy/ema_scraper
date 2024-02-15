@@ -50,15 +50,26 @@ and *how* it could be done
 
 [httrack.log](httrack.log) is the log file from the httrack scrape of the original website
 
+[ranking.py](ranking.py) doesn't do anything yet. I'm using as somewhere to store my
+understanding of what the ranking algorithms are. It's got bits of untested code,
+bits of pseudo-code, and plain text description of the algos.
+
 ## To initialise the database
 
 At the moment, the filepath is hard-coded in
  [test.py](test.py) and [migrations/env.py](migrations/env.py). You must
  change the filepath in both places, to get it working for you.
 
-Then, from the command line: `alembic --autogenerate -m "initialise db"`
+Then, from the command line: `alembic revision --autogenerate -m "initialise db"`
 
-Then edit the migration file that this creates in `migrations/versions` and
+The `autogenerate` means that alembic will read the (models.py)[models.py] file,
+compare the implied database structure to the previous version, and create a
+database migration file to update the database from the previous version to a
+new version that satisfies `models.py`. So you can change the database structure
+just by changing the code in `models.py` and running `alembic revision --autogenerate`.
+
+The first time you run `alembic revision --autogenerate` you will subsequently need to edit the
+migration file that this creates in `migrations/versions`. You must
 remove the `metadata=MetaData(),` clause from the `ruleset` line
 (this is a known alembic bug, and this is the far-from-satisfactory workaround)
 
