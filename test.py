@@ -22,7 +22,7 @@ engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
     # scrape all tournaments, both rulesets
-    for year in list(range(2005, 2006)):
+    for year in list(range(2005, 2025)):
         rating = Tournament_Scraper(session)
         rating.scrape_tournaments_by_year(year)
 

@@ -67,7 +67,8 @@ class RankingEngine:
         # this is a bit contrived, but it doesn't choke on leap years
         return toDate + (date(toDate.year - years, 1, 1) - date(toDate.year, 1, 1))
 
-    def calculate_base_rank(self, position: int, player_count: int):
+    @staticmethod
+    def calculate_base_rank(player_count: int, position: int):
         return round(1000 * (player_count - position) / (player_count - 1))
 
     def weight_tournaments(self, reckoning_day: datetime):
