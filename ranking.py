@@ -70,8 +70,10 @@ class RankingEngine:
     def calculate_base_rank(self, position: int, player_count: int):
         return round(1000 * (player_count - position) / (player_count - 1))
 
-    # For all tournaments, given reckoning day, age the tournament MERS weighting
     def weight_tournaments(self, reckoning_day: datetime):
+        """For all tournaments, given reckoning day,
+        age the tournament MERS weighting, and apply this aged MERS weighting
+        to each tournament result"""
         expiry_day = self.yearsPrior(2, reckoning_day)
         halving_day = self.yearsPrior(1, reckoning_day)
         self.db.execute(update(Tournament).

@@ -21,12 +21,12 @@ logging.info(datetime.now())
 engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
-    #for year in list(range(2004, 2024)):
-    #    rating = Tournament_Scraper(session)
-    #    rating.scrape_tournaments_by_year(year)
+    for year in list(range(2005, 2025)):
+        rating = Tournament_Scraper(session)
+        rating.scrape_tournaments_by_year(year)
 
-    ranker = RankingEngine(session)
-    ranker.weight_tournaments(datetime(2024,2,14))
+    #ranker = RankingEngine(session)
+    #ranker.weight_tournaments(datetime(2024,2,14))
 
 print("done")
 sys.exit(0)

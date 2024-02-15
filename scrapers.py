@@ -84,6 +84,12 @@ class Tournament_Scraper:
             case "15-16-17 June 2018":
                 start_date = datetime(2018, 6, 15)
                 end_date = datetime(2018, 6, 17)
+            case "2-3 February":
+              start_date = datetime(2019, 2, 3)
+              end_date = datetime(2019, 2, 3)
+            case "3 February":
+              start_date = datetime(2019, 2, 3)
+              end_date = datetime(2018, 2, 3)
             case _:
                 start_date = end_date = None
                 try:
