@@ -13,25 +13,34 @@
 # Last = 0 base rank
 # NT = total number of players in tournament
 
-# Base rank = Int(1000 * (NT - rank) / (NT - 1)) . This is fixed at end of tournament and won't change (possibly unless someone is later disqualified)
+# Base rank = Int(1000 * (NT - rank) / (NT - 1)) . This is fixed at end of
+# tournament and won't change (possibly unless someone is later disqualified)
 
-# A tournament has a real last day of tournament (for calendar purposes) and a weighting day of tournament (for age-weighting calculation)
+# A tournament has a real last day of tournament (for calendar purposes) and a
+#  weighting day of tournament (for age-weighting calculation)
 # For almost all tournaments, these two days are the same date
-# For exactly five tournaments during the covid era, they have a weighting day equal to ZZZ, regardless of their real last day.
+# For exactly five tournaments during the covid era, they have a weighting day
+# equal to 1 July 2022, regardless of their real last day.
 
-# Age penalty is calculated given a specific day of reckoning (e.g. today, or some date set for calculating quora for quorum-based tournaments such as EMA or WRC):
+# Age penalty is calculated given a specific day of reckoning (e.g. today, or
+# some date set for calculating quora for quorum-based tournaments such as EMA or WRC):
 # Tournaments with reckoning day - weighting day <= 1 year: 1.0
 # Tornaments with reckoning day - weighting day > 1 year, <= 2 years: 0.5
 # Tournaments with reckoning day - weighting day > 2 years: 0
 
-# A tournament weighting on a reckoning day = MERS * age penalty for that reckoning day. This will be the same for all players in the tournament.
+# A tournament weighting on a reckoning day = MERS * age penalty for that
+# reckoning day. This will be the same for all players in the tournament.
 
-# Part A = weighted average of the best (based on base rank) NA results from the 2 years prior to the reckoning day
+# Part A = weighted average of the best (based on base rank) NA results from
+# the 2 years prior to the reckoning day
 
-# PN is the number of tournaments that player has played in the 2 years prior to the reckoning day
-# NA is the number of tournaments that Part A accounts for. It equals ceil(5+0.8*(Max(PN-5, 0)))
+# PN is the number of tournaments that player has played in the 2 years
+# prior to the reckoning day
+# NA is the number of tournaments that Part A accounts for.
+# It equals ceil(5+0.8*(Max(PN-5, 0)))
 
-# Part B = weighted averge of the best (based on base rank) NB results from the 2 years prior to the reckoning day
+# Part B = weighted averge of the best (based on base rank) NB
+# results from the 2 years prior to the reckoning day
 # NB = 4
 
 # Final ranking = 0.5 * Part A + 0.5 * Part B
@@ -66,7 +75,7 @@ class PlayerRankingEngine:
         """For all tournaments, given reckoning day,
         age the tournament MERS weighting, and apply this aged MERS weighting
         to each tournament result"""
-        expiry_day = self.yearsPrior(2, reckoning_day)
+        expiry_day = datetime(2019,11,8) # Because of covid freeze. self.yearsPrior(2, reckoning_day)
         halving_day = self.yearsPrior(1, reckoning_day)
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date < expiry_day).

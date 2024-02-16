@@ -23,13 +23,17 @@ engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 with Session(engine) as session:
     # 04090055 MCR lots
     ranker = PlayerRankingEngine(session)
+    # current expiry date is 2019-11-08
+    # current halving date is 1 year ago
     ranker.weight_tournaments(datetime(2024,2,16))
+
+
     p = session.query(Player).filter_by(ema_id="04090055").first()
     r = ranker.get_all_eligible_results_for_player(p.id)
     ranker.rank_one_player_for_one_ruleset(p, RulesetClass.MCR, r)
-    print(f"official MCR rank is {p.official_mcr_rank}. We calculate {p.mcr_rank}")
+    print(f"official MCR rank is {p.official_mcr_rank}.\nWe calculate {p.mcr_rank}\n")
     ranker.rank_one_player_for_one_ruleset(p, RulesetClass.Riichi, r)
-    print(f"official riichi rank is {p.official_riichi_rank}. We calculate {p.riichi_rank}")
+    print(f"official riichi rank is {p.official_riichi_rank}.\nWe calculate {p.riichi_rank}\n")
     session.commit()
 
 print("done")

@@ -1,6 +1,7 @@
 import enum
 from datetime import datetime
 from typing import Optional, List
+from math import ceil
 
 from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -90,9 +91,9 @@ class Player(Base):
 
     def rank(self, ruleset, rank: int):
         if ruleset == RulesetClass.MCR:
-            self.mcr_rank = round(rank, 2)
+            self.mcr_rank = ceil(rank * 100) / 100
         else:
-            self.riichi_rank = round(rank, 2)
+            self.riichi_rank = ceil(rank * 100) / 100
 
 
 class Tournament(Base):
