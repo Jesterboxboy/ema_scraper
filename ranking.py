@@ -75,7 +75,9 @@ class PlayerRankingEngine:
         """For all tournaments, given reckoning day,
         age the tournament MERS weighting, and apply this aged MERS weighting
         to each tournament result"""
-        expiry_day = datetime(2019,11,8) # Because of covid freeze. self.yearsPrior(2, reckoning_day)
+        expiry_day = datetime(2019,11,8) \
+            if reckoning_day < datetime(2024, 7, 1) \
+            else self.yearsPrior(2, reckoning_day)
         halving_day = self.yearsPrior(1, reckoning_day)
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date < expiry_day).
