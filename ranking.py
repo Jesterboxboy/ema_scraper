@@ -38,17 +38,7 @@
 
 # ================================================
 #
-#          PROGRAM FLOW
-#
-# ================================================
-
-# Get reckoning day
-# Get ruleset
-# Get list of players to be updated (default to all who have a number of tournaments for this ruleset >= 1)
-
-# ================================================
-#
-#          BITS OF CODE
+#          Code starts here
 #
 # ================================================
 
@@ -59,11 +49,12 @@ from sqlalchemy import update
 
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 
-class RankingEngine:
+class PlayerRankingEngine:
     def __init__(self, db):
         self.db = db
 
-    def yearsPrior(self, years: int, toDate: datetime) -> datetime:
+    @staticmethod
+    def yearsPrior(years: int, toDate: datetime) -> datetime:
         # this is a bit contrived, but it doesn't choke on leap years
         return toDate + (date(toDate.year - years, 1, 1) - date(toDate.year, 1, 1))
 
@@ -90,32 +81,67 @@ class RankingEngine:
         self.db.execute(update(PlayerTournament).values(aged_mers =
             Tournament.aged_mers).
             where(Tournament.id == PlayerTournament.tournament_id))
-        self.db.execute(update(PlayerTournament).values(aged_rank =
-            PlayerTournament.aged_mers * PlayerTournament.base_rank))
         self.db.commit()
 
-def get_all_tournaments_for_player(player_id):
-    return "SELECT tournament_id, aged_mers, ruleset, base_rank FROM tournaments_x_players WHERE player_id=$1 SORT BY end_date DESC", player_id
+    def get_all_results_for_player(self, player_id):
+        """For a given player, get list of all tournament IDs, base rank,
+        and tournament weighting, that have a non-zero weight"""
+        return self.db.query(PlayerTournament).filter_by(player_id=player_id)
+
+    def get_all_eligible_results_for_player(self, player_id):
+        """ for a given player, get all results with a non-zero weighting"""
+        all = self.get_all_results_for_player(player_id)
+        return all.filter(PlayerTournament.aged_mers > 0)
+
+    @staticmethod
+    def weighted_average(ranks, weights):
+        return sum([a * b for a, b in zip(ranks, weights)])/ sum(weights)
+
+    def rank_one_player_for_one_ruleset(self, player, ruleset, results):
+        """well, this doesn't work yet, but it does do something that
+        isn't completely wrong"""
+        eligible = self.get_ranked_tournaments_for_player(
+            results.filter_by(
+            ruleset=ruleset).order_by(
+            PlayerTournament.base_rank.desc()).all())
+
+        if eligible is None:
+            player.rank(ruleset, None)
+            return
+
+        weights = [t.aged_mers for t in eligible]
+        ranks = [t.base_rank for t in eligible]
+        partA = self.weighted_average(ranks, weights)
+
+        weights = [t.aged_mers for t in eligible[0:4]]
+        ranks = [t.base_rank for t in eligible[0:4]]
+        partB = self.weighted_average(ranks, weights)
+        player.rank(ruleset, 0.5 * partA + 0.5 * partB)
+
+    def get_ranked_tournaments_for_player(self, results):
+        """ given a list of results, return the ones that are eligible for
+        ranking"""
+        if len(results) < 2:
+            return None
+        while len(results) < 5:
+            results.append(PlayerTournament(
+                tournament_id=0,
+                aged_mers=1.0,
+                base_rank=0.0))
+        number_eligible = ceil(5 + 0.8*max(len(results) - 5, 0))
+        return results[0:number_eligible]
+
+    # ===========================================
+    # nothing below here works yet
+
+    def find_all_live_players(self):
+        """ """
+        players = self.db.query(Player).all()
+        for p in players:
+            results = self.get_all_eligible_results_for_player(p.id)
+            for ruleset in RulesetClass:
+                self.rank_one_player_for_one_ruleset(p, ruleset, results)
 
 
-# For a given player, get list of all tournament IDs, base rank, and tournament weighting, that they have a tournament weighting > 0 for.
-def get_ranked_tournaments_for_player(tournaments):
-    if len(tournaments) < 2:
-        return []
-    while len(tournaments) < 5:
-        tournaments.push({'tournament_id': 0, 'aged_mers': 1, 'base_rank': 0})
-    number_eligible = ceil(5 + 0.8*max(len(tournaments) - 5, 0))
-    return tournaments[0:number_eligible]
-
-
-def get_eligible_tournaments_for_player(tournaments, ruleset):
-    filtered_tournaments = [t for t in tournaments if t.aged_mers > 0 and t.ruleset == ruleset]
-    results = sorted(filtered_tournaments, key=lambda t: t.base_rank, reverse=True)
-    return get_ranked_tournaments_for_player(results)
-
-
-def calculate_ranking_for_player(player_id, ruleset):
-    get_ranked_tournaments_for_player(player_id, ruleset)
-
-
-# For each player, loop over ranking calculations
+class CountryRankingEngine:
+    pass

@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from sqlalchemy import Enum, ForeignKey
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import String
 
@@ -57,6 +58,7 @@ class PlayerTournament(Base):
     was_ema: Mapped[bool]
     aged_rank: Mapped[Optional[float]]
     aged_mers: Mapped[Optional[float]]
+    ruleset: Mapped[str] = mapped_column(Ruleset, nullable=False)
     # we want to record what the country of affiliation was at the time of
     # the event, as this is used to calculate MERS. Affiliation may change
     # after the event, so we need the historic, not live, value
@@ -76,15 +78,21 @@ class Player(Base):
     local_club: Mapped[Optional[str]]
     local_club_url: Mapped[Optional[str]]
     profile_pic: Mapped[Optional[str]]
-    official_mcr_rank: Mapped[Optional[int]]
-    official_riichi_rank: Mapped[Optional[int]]
-    mcr_rank: Mapped[Optional[int]]
-    riichi_rank: Mapped[Optional[int]]
+    official_mcr_rank: Mapped[Optional[float]]
+    official_riichi_rank: Mapped[Optional[float]]
+    mcr_rank: Mapped[Optional[float]]
+    riichi_rank: Mapped[Optional[float]]
 
     country: Mapped[Optional[Country]] = relationship(back_populates="players")
     tournaments: Mapped[List[PlayerTournament]] = relationship(
         back_populates="player",
         )
+
+    def rank(self, ruleset, rank: int):
+        if ruleset == RulesetClass.MCR:
+            self.mcr_rank = round(rank, 2)
+        else:
+            self.riichi_rank = round(rank, 2)
 
 
 class Tournament(Base):
