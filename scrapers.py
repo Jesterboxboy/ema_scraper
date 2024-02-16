@@ -13,7 +13,7 @@ from daterangeparser import parse as dr_parse
 import pycountry
 
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
-from ranking import RankingEngine
+from ranking import PlayerRankingEngine
 
 country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')
@@ -206,7 +206,6 @@ class Tournament_Scraper:
         t.raw_date = tournament_info[8].text.strip().title()
         t.title = tournament_info[4].text.strip().title()
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
-        t.effective_end_date = t.end_date
 
         if tournament_id == 269 and t.ruleset == RulesetClass.MCR:
             # the player count on the original web page appears to be wrong
@@ -214,6 +213,17 @@ class Tournament_Scraper:
             t.player_count = 84
         else:
             t.player_count = int(tournament_info[10].text.strip())
+
+        t.effective_end_date = t.end_date
+        # special handling for the 5 tournaments held in lockdown that got
+        # extended eligibility periods in the rankings
+        if t.ruleset == RulesetClass.MCR:
+            if tournament_id in (350,351,352,353):
+                t.effective_end_date = datetime(2024,7,1)
+        else:
+            if tournament_id == 269:
+                t.effective_end_date = datetime(2024,7,1)
+
 
         t.ema_country_count = countries # TODO if this is none, calculate it manually
         t.mers = weight
@@ -236,11 +246,12 @@ class Tournament_Scraper:
         page = requests.get(f"{URLBASE}Players/{ema_id}.html")
         p.ema_id = ema_id
         pic = None
+        tables = None
         try:
             dom = BeautifulSoup(page.content, "html.parser")
-            rows = dom.findAll(
-                "div", {"class": "contentpaneopen"}
-                )[0].find("table").find_all("tr")
+            tables = dom.findAll(
+                "div", {"class": "contentpaneopen"})[0].findAll("table")
+            rows = tables[0].find_all("tr")
             p.calling_name = rows[2].find_all("td")[1].string
             names = p.calling_name.split(" ")
             p.sorting_name = names[-1] + ", " + "  ".join(names[0:-1])
@@ -268,6 +279,20 @@ class Tournament_Scraper:
             p.local_club_url = org.find("a").attrs["href"]
         except:
             pass
+
+        if ema_id is not None and ema_id != "-1" and tables is not None:
+            # get the official rankings for both rulesets
+            rows = tables[1].find_all("tr")
+            try:
+                rank = self.french_float(rows[2].find_all("td")[2].text)
+            except:
+                rank = None
+            p.official_mcr_rank = rank
+            try:
+                rank = self.french_float(rows[3].find_all("td")[2].text)
+            except:
+                rank = None
+            p.official_riichi_rank = rank
 
         # just guess that the family name is the word after the last space
         p.profile_pic = None if pic == "photo/Vide.jpg" else pic
@@ -344,7 +369,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                     calling_name=name).filter_by(ema_id=-1).first()
                 if p is None:
                     p = Player()
-                    p.ema_id = -1
+                    p.ema_id = "-1"
                     p.calling_name = name
                     p.sorting_name = result_content[2].string.title() + \
                         ", " + result_content[3].string.title()
@@ -352,7 +377,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                     self.session.commit()
             else:
                 was_ema = True
-                rank = RankingEngine.calculate_base_rank(t.player_count,
+                rank = PlayerRankingEngine.calculate_base_rank(t.player_count,
                                                          position)
                 p = self.session.query(Player).filter_by(
                     ema_id=player_id).first()
@@ -386,8 +411,10 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                 pt = PlayerTournament()
 
             cid = p.country_id
+            ruleset = t.ruleset
 
             pt.player = p
+            pt.ruleset = ruleset
             pt.tournament = t
             pt.table_points = table_points
             pt.score = score

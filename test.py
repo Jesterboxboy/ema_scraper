@@ -2,8 +2,8 @@ from datetime import datetime
 import sys
 
 from scrapers import Tournament_Scraper
-from models import RulesetClass
-from ranking import RankingEngine
+from models import Player, RulesetClass
+from ranking import PlayerRankingEngine
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -21,16 +21,33 @@ logging.info(datetime.now())
 engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
-    # scrape all tournaments, both rulesets
-    for year in list(range(2005, 2025)):
-        rating = Tournament_Scraper(session)
-        rating.scrape_tournaments_by_year(year)
-
-    ranker = RankingEngine(session)
-    ranker.weight_tournaments(datetime(2024,2,15))
+    # 04090055 MCR lots
+    ranker = PlayerRankingEngine(session)
+    ranker.weight_tournaments(datetime(2024,2,16))
+    p = session.query(Player).filter_by(ema_id="04090055").first()
+    r = ranker.get_all_eligible_results_for_player(p.id)
+    ranker.rank_one_player_for_one_ruleset(p, RulesetClass.MCR, r)
+    print(f"official MCR rank is {p.official_mcr_rank}. We calculate {p.mcr_rank}")
+    ranker.rank_one_player_for_one_ruleset(p, RulesetClass.Riichi, r)
+    print(f"official riichi rank is {p.official_riichi_rank}. We calculate {p.riichi_rank}")
+    session.commit()
 
 print("done")
 sys.exit(0)
+
+if False:
+
+    scraper = Tournament_Scraper(session)
+    for year in list(range(2019, 2025)):
+        scraper.scrape_tournaments_by_year(year)
+
+
+
+    scraper = Tournament_Scraper(session)
+    scraper.add_player(ema_id="04090055")
+
+    ranker = PlayerRankingEngine(session)
+
 
 
 
