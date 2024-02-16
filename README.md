@@ -18,10 +18,14 @@ pip -r requirements.txt
 ## Files
 
 [models.py](models.py) contains the sqlalchemy specification for the database
-that will hold all the data on players and tournaments.
+that holds all the data on players and tournaments.
 [SQLAlchemy](https://www.sqlalchemy.org/) implements and enforces
 all the constraints and checks of a relational database, even if the underlying
 database is sqlite3 (as it is here).
+
+[ranking.py](ranking.py) contains the EMA ranking calculation. This is being
+developed at the moment, and so far is just being tested with 1 player at
+a time. The code to do *all* the players isn't written yet.
 
 [scrapers.py](scrapers.py) contains
 the code to scrape, parse and store player & tournament info from the existing
@@ -57,9 +61,6 @@ showed it could be done, and *how* it could be done
 [httrack.log](httrack.log) is the log file from the httrack scrape of the
 original website
 
-[ranking.py](ranking.py) doesn't do anything yet. I'm using as somewhere to
-store my understanding of what the ranking algorithms are. It's got bits of
-untested code, bits of pseudo-code, and plain text description of the algos.
 
 ## To initialise the database
 
