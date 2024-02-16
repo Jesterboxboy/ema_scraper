@@ -90,6 +90,8 @@ class Player(Base):
         )
 
     def rank(self, ruleset, rank: int):
+        if rank is None:
+            rank = 0
         if ruleset == RulesetClass.MCR:
             self.mcr_rank = ceil(rank * 100) / 100
         else:
