@@ -90,12 +90,12 @@ class Player(Base):
         )
 
     def rank(self, ruleset, rank: int):
-        if rank is None:
-            rank = 0
+        if rank is not None:
+            rank = ceil(rank * 100) / 100
         if ruleset == RulesetClass.MCR:
-            self.mcr_rank = ceil(rank * 100) / 100
+            self.mcr_rank = rank
         else:
-            self.riichi_rank = ceil(rank * 100) / 100
+            self.riichi_rank = rank
 
 
 class Tournament(Base):

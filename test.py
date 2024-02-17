@@ -22,7 +22,15 @@ engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
     ranker = PlayerRankingEngine(session)
+    p=session.query(Player).filter_by(ema_id="14990112").first()
+    ranker = PlayerRankingEngine(session)
+    ranker.weight_tournaments(datetime(2024,1,1))
+    ranker.rank_player(p)
 
+print("done")
+sys.exit(0)
+
+if False:
 
     #scraper = Tournament_Scraper(session)
     #for year in list(range(2005, 2025)):
@@ -30,7 +38,7 @@ with Session(engine) as session:
 
     # current expiry date is 2019-11-08
     # current halving date is 1 year ago
-    ranker.weight_tournaments(datetime(2024,2,16))
+    ranker.weight_tournaments(datetime(2024,1,1))
     total = 0
     bad = 0
     for p in session.query(Player).all():
@@ -56,10 +64,6 @@ with Session(engine) as session:
 
     logging.info(f"{total} calcs done, of which {bad} were bad")
 
-print("done")
-sys.exit(0)
-
-if False:
 
     # 04090055 has a LOT of eligible MCR tournaments, and 2 riichi ones,
     #          so is a good test of the ranking algo
