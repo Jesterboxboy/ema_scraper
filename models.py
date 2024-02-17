@@ -53,9 +53,9 @@ class PlayerTournament(Base):
         ForeignKey("tournament.id"), primary_key=True
     )
     score: Mapped[int]
-    table_points: Mapped[Optional[int]]
+    table_points: Mapped[Optional[float]]
     position: Mapped[int]
-    base_rank: Mapped[int]
+    base_rank: Mapped[float]
     was_ema: Mapped[bool]
     aged_rank: Mapped[Optional[float]]
     aged_mers: Mapped[Optional[float]]

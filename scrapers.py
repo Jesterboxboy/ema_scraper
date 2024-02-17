@@ -55,7 +55,7 @@ class Tournament_Scraper:
         self.session.commit()
         return c
 
-    def parse_dates(self, raw_date, title):
+    def parse_dates(self, raw_date: str, title: str):
         """we have dates in a bunch of formats, so this tries different tools
         in turn. Some recorded dates are just weird, so there's a bunch of
         one-off handling as the cleanest way to handle them, rather than
@@ -102,6 +102,15 @@ class Tournament_Scraper:
                 if start_date is None:
                     try:
                         end_date = start_date = du_parse(raw_date)
+                        if start_date.hour + start_date.minute > 0:
+                            # tournament dates don't have any time specified,
+                            # so if we've got a time, we've mis-parsed it
+                            start_date = end_date = None
+                            if "." in raw_date:
+                                start_date, end_date = self.parse_dates(
+                                    raw_date.replace(".", " "),
+                                    title,
+                                    )
                     except:
                         start_date = end_date = None
                 if start_date is None:
@@ -171,7 +180,7 @@ class Tournament_Scraper:
         is_new = t is None
         if is_new:
             t = Tournament()
-            print(f"scraping {ruleset} tournament {tournament_id}")
+            print(f"scraping {str(ruleset).replace('RulesetClass.','')} {tournament_id}")
         else:
             print(f"re-scraping '{t.title}', last scraped {t.scraped_on}")
 
