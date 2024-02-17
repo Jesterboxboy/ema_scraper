@@ -69,8 +69,8 @@ class PlayerRankingEngine:
         return toDate + (date(toDate.year - years, 1, 1) - date(toDate.year, 1, 1))
 
     @staticmethod
-    def calculate_base_rank(player_count: int, position: int):
-        return round(1000 * (player_count - position) / (player_count - 1))
+    def calculate_base_rank(player_count: int, position: int) -> float:
+        return 1000 * (player_count - position) / (player_count - 1)
 
     @staticmethod
     def weighted_average(ranks, weights):
@@ -100,16 +100,23 @@ class PlayerRankingEngine:
         self.db.commit()
 
     def rank_player(self, p):
-        ''' calculate MCR and riichi ranking for a given player '''
+        ''' calculate both MCR and riichi ranking for a given player '''
         # get all results with a non-zero weighting
         results = [r for r in p.tournaments if r.aged_mers > 0]
         for ruleset in RulesetClass:
             self.rank_one_player_for_one_ruleset(p, ruleset, results)
 
 
-    def rank_one_player_for_one_ruleset(self, player, ruleset, results):
-        """well, this doesn't work yet, but it does do something that
-        isn't completely wrong"""
+    def rank_one_player_for_one_ruleset(self, player, ruleset, results=None):
+        """ this contains the main ranking algorithm """
+        # do some argument-parsing to allow this function to be called in
+        # different ways. This is very convenient during testing
+        if type(player) == str:
+            player = self.db.query(Player).filter_by(ema_id=player).first()
+        if results is None:
+            results = [r for r in player.tournaments if r.aged_mers > 0]
+
+        # filter results to only those for this ruleset
         eligible = self.get_ranked_tournaments_for_player(
             [r for r in results if r.ruleset == ruleset]
             )

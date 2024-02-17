@@ -228,10 +228,10 @@ class Tournament_Scraper:
         # extended eligibility periods in the rankings
         if t.ruleset == RulesetClass.MCR:
             if tournament_id in (350,351,352,353):
-                t.effective_end_date = datetime(2024,7,1)
+                t.effective_end_date = datetime(2022,7,1)
         else:
             if tournament_id == 269:
-                t.effective_end_date = datetime(2024,7,1)
+                t.effective_end_date = datetime(2022,7,1)
 
 
         t.ema_country_count = countries # TODO if this is none, calculate it manually
