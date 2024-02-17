@@ -53,9 +53,9 @@ class PlayerTournament(Base):
         ForeignKey("tournament.id"), primary_key=True
     )
     score: Mapped[int]
-    table_points: Mapped[Optional[int]]
+    table_points: Mapped[Optional[float]]
     position: Mapped[int]
-    base_rank: Mapped[int]
+    base_rank: Mapped[float]
     was_ema: Mapped[bool]
     aged_rank: Mapped[Optional[float]]
     aged_mers: Mapped[Optional[float]]
@@ -90,12 +90,12 @@ class Player(Base):
         )
 
     def rank(self, ruleset, rank: int):
-        if rank is None:
-            rank = 0
+        if rank is not None:
+            rank = ceil(rank * 100) / 100
         if ruleset == RulesetClass.MCR:
-            self.mcr_rank = ceil(rank * 100) / 100
+            self.mcr_rank = rank
         else:
-            self.riichi_rank = ceil(rank * 100) / 100
+            self.riichi_rank = rank
 
 
 class Tournament(Base):

@@ -71,6 +71,10 @@ class PlayerRankingEngine:
     def calculate_base_rank(player_count: int, position: int):
         return round(1000 * (player_count - position) / (player_count - 1))
 
+    @staticmethod
+    def weighted_average(ranks, weights):
+        return sum([a * b for a, b in zip(ranks, weights)])/ sum(weights)
+
     def weight_tournaments(self, reckoning_day: datetime):
         """For all tournaments, given reckoning day,
         age the tournament MERS weighting, and apply this aged MERS weighting
@@ -94,64 +98,65 @@ class PlayerRankingEngine:
             where(Tournament.id == PlayerTournament.tournament_id))
         self.db.commit()
 
-    def get_all_results_for_player(self, player_id):
-        """For a given player, get list of all tournament IDs, base rank,
-        and tournament weighting, that have a non-zero weight"""
-        return self.db.query(PlayerTournament).filter_by(player_id=player_id)
+    def rank_player(self, p):
+        ''' calculate MCR and riichi ranking for a given player '''
+        # get all results with a non-zero weighting
+        results = [r for r in p.tournaments if r.aged_mers > 0]
+        for ruleset in RulesetClass:
+            self.rank_one_player_for_one_ruleset(p, ruleset, results)
 
-    def get_all_eligible_results_for_player(self, player_id):
-        """ for a given player, get all results with a non-zero weighting"""
-        all = self.get_all_results_for_player(player_id)
-        return all.filter(PlayerTournament.aged_mers > 0)
-
-    @staticmethod
-    def weighted_average(ranks, weights):
-        return sum([a * b for a, b in zip(ranks, weights)])/ sum(weights)
 
     def rank_one_player_for_one_ruleset(self, player, ruleset, results):
         """well, this doesn't work yet, but it does do something that
         isn't completely wrong"""
         eligible = self.get_ranked_tournaments_for_player(
-            results.filter_by(
-            ruleset=ruleset).order_by(
-            PlayerTournament.base_rank.desc()).all())
+            [r for r in results if r.ruleset == ruleset]
+            )
 
         if eligible is None:
             player.rank(ruleset, None)
             return
 
+        # part A is a weighted average of all eligible results
         weights = [t.aged_mers for t in eligible]
         ranks = [t.base_rank for t in eligible]
         partA = self.weighted_average(ranks, weights)
 
+        # part B is a weighted average of the top 4 results, ranked by base rank
         weights = [t.aged_mers for t in eligible[0:4]]
         ranks = [t.base_rank for t in eligible[0:4]]
         partB = self.weighted_average(ranks, weights)
+
+        # final ranking is a straight average of part A and part B
         player.rank(ruleset, 0.5 * partA + 0.5 * partB)
 
     def get_ranked_tournaments_for_player(self, results):
         """ given a list of results, return the ones that are eligible for
-        ranking"""
+        ranking. If there are fewer than 2 eligible, then the player
+        isn't eligible to have a ranking yet.
+        Otherwise, if they have 2-4 qualifying results, then pad the list out
+        with dummy results that have base rank 0, weight 1.
+        And if they have more than 5 results, return the best """
         if len(results) < 2:
             return None
+        # sort the results in descending base_rank order
+        results.sort(key=lambda s: -s.base_rank)
+        # pad the list to at least 5 results
         while len(results) < 5:
             results.append(PlayerTournament(
                 tournament_id=0,
                 aged_mers=1.0,
                 base_rank=0.0))
+
+        # cap the eligible number of results at 5 + 80% of the amount over 5
         number_eligible = ceil(5 + 0.8*max(len(results) - 5, 0))
         return results[0:number_eligible]
 
-    # ===========================================
-    # nothing below here works yet
-
-    def find_all_live_players(self):
-        """ """
+    def rank_all_players(self):
+        """ cycle through all players, and rank each in turn """
         players = self.db.query(Player).all()
         for p in players:
-            results = self.get_all_eligible_results_for_player(p.id)
-            for ruleset in RulesetClass:
-                self.rank_one_player_for_one_ruleset(p, ruleset, results)
+            self.rank_player(p)
 
 
 class CountryRankingEngine:

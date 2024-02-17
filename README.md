@@ -81,7 +81,7 @@ structure just by changing the code in `models.py` and running
 
 The first time you run `alembic revision --autogenerate` you will subsequently
 need to edit the migration file that this creates in `migrations/versions`.
-You must remove the `metadata=MetaData(),` clause from the `ruleset` line
+You must remove the two `metadata=MetaData(),` clauses from the `ruleset` line
 (this is a known alembic bug, and this is the far-from-satisfactory workaround)
 
 Then:
