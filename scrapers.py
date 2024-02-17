@@ -228,10 +228,10 @@ class Tournament_Scraper:
         # extended eligibility periods in the rankings
         if t.ruleset == RulesetClass.MCR:
             if tournament_id in (350,351,352,353):
-                t.effective_end_date = datetime(2024,7,1)
+                t.effective_end_date = datetime(2022,7,1)
         else:
             if tournament_id == 269:
-                t.effective_end_date = datetime(2024,7,1)
+                t.effective_end_date = datetime(2022,7,1)
 
 
         t.ema_country_count = countries # TODO if this is none, calculate it manually
@@ -437,3 +437,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
 
         if rank_errors > 0:
             print(f"{rank_errors} base-rank discrepancies for {t.title}; logfile has details")
+
+    def scrape_all(self, start:int=2005, end:int=2025):
+        for year in list(range(start, end)):
+            self.scrape_tournaments_by_year(year)
