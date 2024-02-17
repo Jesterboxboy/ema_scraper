@@ -437,3 +437,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
 
         if rank_errors > 0:
             print(f"{rank_errors} base-rank discrepancies for {t.title}; logfile has details")
+
+    def scrape_all(self, start:int=2005, end:int=2025):
+        for year in list(range(start, end)):
+            self.scrape_tournaments_by_year(year)

@@ -51,6 +51,7 @@
 #
 # ================================================
 
+import logging
 from datetime import date, datetime
 from math import ceil
 
@@ -79,7 +80,7 @@ class PlayerRankingEngine:
         """For all tournaments, given reckoning day,
         age the tournament MERS weighting, and apply this aged MERS weighting
         to each tournament result"""
-        expiry_day = datetime(2019,11,8) \
+        expiry_day = datetime(2019,11,15) \
             if reckoning_day < datetime(2024, 7, 1) \
             else self.yearsPrior(2, reckoning_day)
         halving_day = self.yearsPrior(1, reckoning_day)
@@ -152,12 +153,39 @@ class PlayerRankingEngine:
         number_eligible = ceil(5 + 0.8*max(len(results) - 5, 0))
         return results[0:number_eligible]
 
-    def rank_all_players(self):
+    def rank_all_players(self, reckoning_day:datetime = None, assess=False):
         """ cycle through all players, and rank each in turn """
+        self.weight_tournaments(reckoning_day or datetime.now())
         players = self.db.query(Player).all()
         for p in players:
             self.rank_player(p)
+        if assess:
+            self.assess_player_ranking()
+
+    def assess_player_ranking(self):
+        total = 0
+        bad = 0
+        for p in self.db.query(Player).all():
+            if p.official_mcr_rank is not None:
+                total += 1
+                delta = p.official_mcr_rank - p.mcr_rank
+                if abs(delta) > 0.02:
+                    bad += 1
+                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
+                    logging.warning(f"official MCR rank is {p.official_mcr_rank}.\nWe calculate {p.mcr_rank}\n")
+
+            if p.official_riichi_rank is not None:
+                total += 1
+                delta = p.official_riichi_rank - p.riichi_rank
+                if abs(delta) > 0.02:
+                    bad += 1
+                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
+                    logging.warning(f"official riichi rank is {p.official_riichi_rank}.\nWe calculate {p.riichi_rank}\n")
+
+        logging.info(f"{total} calcs done, of which {bad} were bad")
+
 
 
 class CountryRankingEngine:
-    pass
+    def __init__(self):
+        self.dummy = Country()
