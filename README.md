@@ -23,9 +23,12 @@ that holds all the data on players and tournaments.
 all the constraints and checks of a relational database, even if the underlying
 database is sqlite3 (as it is here).
 
-[ranking.py](ranking.py) contains the EMA ranking calculation. This is being
-developed at the moment, and so far is just being tested with 1 player at
-a time. The code to do *all* the players isn't written yet.
+[ranking.py](ranking.py) contains the EMA ranking calculation. This has now
+been verified for all players bar one, for both rulesets. That one player
+has identified an ambiguity in the ranking algorithm.
+
+[quota.py](quota.py) will contain the algorithm to calculate country quotas
+for quota tournaments such as WRC, ERMC, and OEMC
 
 [scrapers.py](scrapers.py) contains
 the code to scrape, parse and store player & tournament info from the existing

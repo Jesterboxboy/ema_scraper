@@ -57,7 +57,7 @@ from math import ceil
 
 from sqlalchemy import update
 
-from models import Player, Tournament, PlayerTournament, Country, RulesetClass
+from models import Player, Tournament, PlayerTournament, RulesetClass
 
 class PlayerRankingEngine:
     def __init__(self, db):
@@ -69,8 +69,8 @@ class PlayerRankingEngine:
         return toDate + (date(toDate.year - years, 1, 1) - date(toDate.year, 1, 1))
 
     @staticmethod
-    def calculate_base_rank(player_count: int, position: int) -> float:
-        return 1000 * (player_count - position) / (player_count - 1)
+    def calculate_base_rank(player_count: int, position: int) -> int:
+        return round(1000 * (player_count - position) / (player_count - 1))
 
     @staticmethod
     def weighted_average(ranks, weights):
@@ -127,12 +127,12 @@ class PlayerRankingEngine:
 
         # part A is a weighted average of all eligible results
         weights = [t.aged_mers for t in eligible]
-        ranks = [t.base_rank for t in eligible]
+        ranks = [round(t.base_rank) for t in eligible]
         partA = self.weighted_average(ranks, weights)
 
         # part B is a weighted average of the top 4 results, ranked by base rank
         weights = [t.aged_mers for t in eligible[0:4]]
-        ranks = [t.base_rank for t in eligible[0:4]]
+        ranks = [round(t.base_rank) for t in eligible[0:4]]
         partB = self.weighted_average(ranks, weights)
 
         # final ranking is a straight average of part A and part B
@@ -173,16 +173,25 @@ class PlayerRankingEngine:
         total = 0
         bad = 0
         for p in self.db.query(Player).all():
-            if p.official_mcr_rank is not None:
-                total += 1
+            total +=1
+            if p.official_mcr_rank is None:
+                if p.mcr_rank is not None:
+                    bad += 1
+                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
+                    logging.warning(f"official MCR rank is None. \nWe calculate {p.mcr_rank}\n")
+            else:
                 delta = p.official_mcr_rank - p.mcr_rank
                 if abs(delta) > 0.02:
                     bad += 1
                     logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
                     logging.warning(f"official MCR rank is {p.official_mcr_rank}.\nWe calculate {p.mcr_rank}\n")
 
-            if p.official_riichi_rank is not None:
-                total += 1
+            if p.official_riichi_rank is None:
+                if p.riichi_rank is not None:
+                    bad += 1
+                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
+                    logging.warning(f"official riichi rank is None. \nWe calculate {p.riichi_rank}\n")
+            else:
                 delta = p.official_riichi_rank - p.riichi_rank
                 if abs(delta) > 0.02:
                     bad += 1
@@ -190,9 +199,3 @@ class PlayerRankingEngine:
                     logging.warning(f"official riichi rank is {p.official_riichi_rank}.\nWe calculate {p.riichi_rank}\n")
 
         logging.info(f"{total} calcs done, of which {bad} were bad")
-
-
-
-class CountryRankingEngine:
-    def __init__(self):
-        self.dummy = Country()
