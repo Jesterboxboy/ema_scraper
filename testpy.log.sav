@@ -1,0 +1,70 @@
+INFO:root:2024-02-18 09:54:36.156378
+ERROR:root:Discrepancy in base-rank calculation for Broeder, Ingrid.
+                    We calculated 411, but the official rank is 402
+                    Tournament is Open European Mahjong Championship 2005 RulesetClass.MCR 1
+            
+ERROR:root:Discrepancy in base-rank calculation for Jenjahn, Monika.
+                    We calculated 159, but the official rank is 150
+                    Tournament is Open European Mahjong Championship 2005 RulesetClass.MCR 1
+            
+ERROR:root:Discrepancy in base-rank calculation for Jaritz, Gerti.
+                    We calculated 540, but the official rank is 524
+                    Tournament is Hungarian Open 2006 RulesetClass.MCR 9
+            
+ERROR:root:
+Discrepancy between number of players (136) and
+number of results (133) for Open European Championship 2007, RulesetClass.MCR 22
+
+ERROR:root:Discrepancy in base-rank calculation for Foschi, Elisa.
+                    We calculated 127, but the official rank is 113
+                    Tournament is 3Rd Open Italian Championship RulesetClass.MCR 40
+            
+ERROR:root:
+Discrepancy between number of players (24) and
+number of results (18) for Russian Open Mahjong Championship 2008, RulesetClass.MCR 41
+
+ERROR:root:Discrepancy in base-rank calculation for Broers, Eveline.
+                    We calculated 506, but the official rank is 494
+                    Tournament is 1 European Riichi Championship 2008 RulesetClass.Riichi 1
+            
+ERROR:root:Discrepancy in base-rank calculation for Foschi, Elisa.
+                    We calculated 884, but the official rank is 860
+                    Tournament is Mestre Open 2009 RulesetClass.MCR 45
+            
+ERROR:root:Discrepancy in base-rank calculation for Várnai, Eszter.
+                    We calculated 587, but the official rank is 571
+                    Tournament is 4Th Hungarian Open / Sisi Cup 2009 Vol. I RulesetClass.MCR 53
+            
+ERROR:root:Discrepancy in base-rank calculation for Lavallee, Sebastian.
+                    We calculated 257, but the official rank is 200
+                    Tournament is Tri Nitro Tournament: Third Detonation ! RulesetClass.Riichi 76
+            
+ERROR:root:Discrepancy in base-rank calculation for Horwat, Vadim.
+                    We calculated 200, but the official rank is 229
+                    Tournament is Tri Nitro Tournament: Third Detonation ! RulesetClass.Riichi 76
+            
+ERROR:root:Discrepancy in base-rank calculation for Fraser, Ian.
+                    We calculated 359, but the official rank is 333
+                    Tournament is Uk Open Riichi 2017 RulesetClass.Riichi 161
+            
+ERROR:root:Discrepancy in base-rank calculation for Todd, Norma.
+                    We calculated 308, but the official rank is 333
+                    Tournament is Uk Open Riichi 2017 RulesetClass.Riichi 161
+            
+ERROR:root:
+Discrepancy between number of players (32) and
+number of results (31) for Vienna Open Riichi Tournament 2017, RulesetClass.Riichi 164
+
+ERROR:root:
+Discrepancy between number of players (16) and
+number of results (15) for Copenhagen Riichi Open 2019, RulesetClass.Riichi 219
+
+ERROR:root:
+Discrepancy between number of players (36) and
+number of results (38) for Swedish Open Mcr Mahjong Championship 2023, RulesetClass.MCR 373
+
+WARNING:root:mismatch for JUSTIN KOH 11990143
+WARNING:root:official riichi rank is 621.49.
+We calculate 624.38
+
+INFO:root:11447 calcs done, of which 1 were bad

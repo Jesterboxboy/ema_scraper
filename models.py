@@ -39,6 +39,8 @@ class Country(Base):
     ema_since: Mapped[Optional[datetime]]
     national_org_name: Mapped[Optional[str]]
     national_org_url: Mapped[Optional[str]]
+    averageRankOfTop3Players: Mapped[Optional[float]]
+    countryRanking: Mapped[Optional[int]]
 
     players: Mapped[List["Player"]] = relationship(back_populates="country")
     tournaments: Mapped[List["Tournament"]] = relationship(
@@ -55,7 +57,7 @@ class PlayerTournament(Base):
     score: Mapped[int]
     table_points: Mapped[Optional[float]]
     position: Mapped[int]
-    base_rank: Mapped[float]
+    base_rank: Mapped[int]
     was_ema: Mapped[bool]
     aged_rank: Mapped[Optional[float]]
     aged_mers: Mapped[Optional[float]]
@@ -91,7 +93,7 @@ class Player(Base):
 
     def rank(self, ruleset, rank: int):
         if rank is not None:
-            rank = ceil(rank * 100) / 100
+            rank = round(rank * 100) / 100
         if ruleset == RulesetClass.MCR:
             self.mcr_rank = rank
         else:
