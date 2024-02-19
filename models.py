@@ -1,10 +1,8 @@
 import enum
 from datetime import datetime
 from typing import Optional, List
-from math import ceil
 
 from sqlalchemy import Enum, ForeignKey
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import String
 

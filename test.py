@@ -3,10 +3,10 @@ import sys
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 from scrapers import Tournament_Scraper
 from ranking import PlayerRankingEngine
+from quota import CountryRankingEngine
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-
 
 import logging
 logging.basicConfig(
@@ -20,8 +20,10 @@ logging.info(datetime.now())
 engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
 
 with Session(engine) as session:
+    # PlayerRankingEngine(session).rank_all_players(assess=True)
+    r = CountryRankingEngine(session, RulesetClass.Riichi)
+    r.rank_countries()
     #Tournament_Scraper(session).scrape_all()
-    PlayerRankingEngine(session).rank_all_players(assess=True)
     #PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.Riichi)
     pass
 

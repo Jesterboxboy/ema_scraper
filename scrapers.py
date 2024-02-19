@@ -19,6 +19,13 @@ country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')
 URLBASE = "http://silk.mahjong.ie/ranking/"
 
+class Country_Scraper:
+    def __init__(self, session):
+        self.db = session
+
+    def scrape_country_rankings(self):
+        pass
+
 class Tournament_Scraper:
     def __init__(self, session):
         self.session = session
