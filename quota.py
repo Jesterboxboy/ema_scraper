@@ -57,8 +57,7 @@
 import logging
 from datetime import datetime
 
-from sqlalchemy import update, and_
-
+from scrapers import Country_Scraper
 from models import Player, Country, RulesetClass
 from ranking import PlayerRankingEngine
 
@@ -70,40 +69,46 @@ class Quota():
     player_count: int # number of qualifying players
     over700: int # number of players with personal rank over 700
     # number of ranked players / total EMA-wide number of ranked players
-    propnOfAllRankedPlayers: float
+    propn_of_all_ranked_players: float
     # number of 700+ players / total EMA-wide number of 700+ players
-    propnOfAllPlayers700plus: float
-    averageRankOfTop3Players: float
-    countryRanking: int
+    propn_of_all_players_700plus: float
+    average_rank_of_top3_players: float
+    country_ranking: int
 
 
 class CountryRankingEngine: # NONE OF THE BELOW WORKS YET
-    def __init__(
-            self,
-            db,
-            ruleset: RulesetClass,
-            reckoning_day: datetime = datetime.now()
-            ):
+    def __init__(self, db):
         self.db = db
-        self.ema = [] # list of ema countries
 
-        self.ruleset = ruleset
+    def rank_countries_for_one_ruleset(
+            self,
+            ruleset: RulesetClass,
+            write_to_db: bool = True,
+            reckoning_day: datetime = None,
+            assess: bool = False,
+            ):
+
+        if reckoning_day is not None:
+            PlayerRankingEngine(self.db).rank_all_players(reckoning_day)
+
+        ema = [] # list of ema countries
+
         # PlayerRankingEngine(db).rank_all_players(reckoning_day)
         is_mcr = ruleset == RulesetClass.MCR
         if is_mcr:
-            all_players = db.query(Player).filter(
+            all_players = self.db.query(Player).filter(
                 Player.ema_id != -1).filter(Player.mcr_rank != None
                 ).order_by(Player.mcr_rank.desc())
             all_700plus = all_players.filter(Player.mcr_rank > 700)
         else:
-            all_players = db.query(Player).filter(
-                and_(Player.ema_id != -1, Player.riichi_rank != None
-                )).order_by(Player.riichi_rank.desc())
+            all_players = self.db.query(Player).filter(
+                Player.ema_id != -1).filter(Player.riichi_rank != None
+                ).order_by(Player.riichi_rank.desc())
             all_700plus = all_players.filter(Player.riichi_rank > 700)
 
         self.player_count = len(all_players.all())
         self.players700plus = len(all_700plus.all())
-        for c in db.query(Country): # .filter(Country.ema_since is not None):
+        for c in self.db.query(Country): # .filter(Country.ema_since is not None):
             if c.id == "??":
                 continue
             q = Quota()
@@ -113,8 +118,8 @@ class CountryRankingEngine: # NONE OF THE BELOW WORKS YET
             c_700plus = len(
                 all_700plus.filter(Player.country_id == c.id).all()
                 )
-            q.propnOfAllPlayers700plus = c_700plus / self.players700plus
-            q.propnOfAllRankedPlayers = q.player_count / self.player_count
+            q.propn_of_all_players_700plus = c_700plus / self.players700plus
+            q.propn_of_all_ranked_players = q.player_count / self.player_count
             if q.player_count > 0:
                 top3 = c_all.limit(3)
                 top3ranks = [
@@ -122,31 +127,70 @@ class CountryRankingEngine: # NONE OF THE BELOW WORKS YET
                     ] if is_mcr else [
                     p.riichi_rank for p in top3
                     ]
-                # top3ranks = [
-                #     p.mcr_rank for p in top3 if p.mcr_rank is not None
-                #     ] if is_mcr else [
-                #     p.riichi_rank for p in top3 if p.riichi_rank is not None
-                #     ]
-
-                q.averageRankOfTop3Players = round(sum(top3ranks)/3, 2)
+                q.average_rank_of_top3_players = round(sum(top3ranks)/3, 2)
             else:
-                q.averageRankOfTop3Players = None
+                q.average_rank_of_top3_players = None
 
-            if q.averageRankOfTop3Players is not None:
-                self.ema.append(q)
-        self.ema.sort(
-            key=lambda q:q.averageRankOfTop3Players,
+            if q.average_rank_of_top3_players is not None:
+                ema.append(q)
+        ema.sort(
+            key=lambda q:q.average_rank_of_top3_players,
             reverse=True,
             )
 
+        if assess:
+            total = 0
+            bad = 0
+            if is_mcr:
+                url = "https://silk.mahjong.ie/ranking/BestNation_MCR.html"
+            else:
+                url = "https://silk.mahjong.ie/ranking/BestNation_RCR.html"
 
-    def rank_countries(self):
-        """ based on average ranking of top 3 players """
+            official = Country_Scraper.scrape_country_rankings(url)
+
         pos = 1
-        for q in self.ema:
-            q.countryRanking = pos
-            logging.info(f"#{pos}  {q.id}  {q.player_count}  {q.averageRankOfTop3Players}")
+        logging.info(f"Country rankings for {ruleset}")
+        for q in ema:
+            c = self.db.query(Country).filter_by(id=q.id).first()
+            # yes, I know this is ugly. It works. There must be a cleaner way
+            # to do it. Please make it cleaner. Please make the mess go away.
+            if is_mcr:
+                c.country_ranking_MCR = pos
+                c.player_count_MCR = q.player_count
+                c.over700_MCR = c_700plus
+                c.average_rank_of_top3_players_MCR = q.average_rank_of_top3_players
+                c.propn_of_all_ranked_players_MCR = q.propn_of_all_ranked_players
+                c.propn_of_all_players_700plus_MCR = q.propn_of_all_players_700plus
+            else:
+                c.country_ranking_riichi = pos
+                c.player_count_riichi = q.player_count
+                c.over700_riichi = c_700plus
+                c.average_rank_of_top3_players_riichi = q.average_rank_of_top3_players
+                c.propn_of_all_ranked_players_riichi = q.propn_of_all_ranked_players
+                c.propn_of_all_players_700plus_riichi = q.propn_of_all_players_700plus
+
+            if assess:
+                test = official[pos-1]
+                total += 1
+                if q.id != test['country']:
+                    bad += 1
+                    logging.warning(f"#{pos} Country mismatch- official {test['country']}, we think {q.id}")
+                    continue
+                if q.player_count != test['player_count']:
+                    bad += 1
+                    logging.warning(f"#{pos} player count mismatch- official {test['player_count']}, we think {q.player_count}")
+                    continue
+                if abs(q.average_rank_of_top3_players - test['top3_average']) > 0.02:
+                    bad += 1
+                    logging.warning(f"#{pos} top3 average mismatch- official {test['top3_average']}, we think {q.average_rank_of_top3_players}")
+                    continue
+
             pos += 1
+
+        if assess:
+            logging.info(f"{total} rows tested, {bad} rows bad")
+
+        self.db.commit()
 
 
 class QuotaMaker():
