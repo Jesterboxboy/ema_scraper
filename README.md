@@ -28,7 +28,8 @@ been verified for all players bar one, for both rulesets. That one player
 has identified an ambiguity in the ranking algorithm.
 
 [quota.py](quota.py) will contain the algorithm to calculate country quotas
-for quota tournaments such as WRC, ERMC, and OEMC
+for quota tournaments such as WRC, ERMC, and OEMC. It also creates the country
+rankings for both rulesets (this now works)
 
 [scrapers.py](scrapers.py) contains
 the code to scrape, parse and store player & tournament info from the existing

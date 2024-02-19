@@ -37,8 +37,28 @@ class Country(Base):
     ema_since: Mapped[Optional[datetime]]
     national_org_name: Mapped[Optional[str]]
     national_org_url: Mapped[Optional[str]]
-    averageRankOfTop3Players: Mapped[Optional[float]]
-    countryRanking: Mapped[Optional[int]]
+
+    country_ranking_MCR: Mapped[Optional[int]]
+    # number of qualifying players
+    player_count_MCR: Mapped[Optional[int]]
+    # number of players with personal rank over 700
+    over700_MCR: Mapped[Optional[int]]
+    average_rank_of_top3_players_MCR: Mapped[Optional[float]]
+    # number of ranked players / total EMA-wide number of ranked players
+    propn_of_all_ranked_players_MCR: Mapped[Optional[float]]
+    # number of 700+ players / total EMA-wide number of 700+ players
+    propn_of_all_players_700plus_MCR: Mapped[Optional[float]]
+
+    country_ranking_riichi: Mapped[Optional[int]]
+    # number of qualifying players
+    player_count_riichi: Mapped[Optional[int]]
+    # number of players with personal rank over 700
+    over700_riichi: Mapped[Optional[int]]
+    average_rank_of_top3_players_riichi: Mapped[Optional[float]]
+    # number of ranked players / total EMA-wide number of ranked players
+    propn_of_all_ranked_players_riichi: Mapped[Optional[float]]
+    # number of 700+ players / total EMA-wide number of 700+ players
+    propn_of_all_players_700plus_riichi: Mapped[Optional[float]]
 
     players: Mapped[List["Player"]] = relationship(back_populates="country")
     tournaments: Mapped[List["Tournament"]] = relationship(

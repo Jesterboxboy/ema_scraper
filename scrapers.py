@@ -19,19 +19,36 @@ country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')
 URLBASE = "http://silk.mahjong.ie/ranking/"
 
+def french_float(number_string):
+    return float(number_string.replace(',', '.'))
+
 class Country_Scraper:
     def __init__(self, session):
         self.db = session
 
-    def scrape_country_rankings(self):
-        pass
+    @staticmethod
+    def scrape_country_rankings(url: str):
+        ranking = []
+        best_nation_page = requests.get(url)
+        year_soup = BeautifulSoup(best_nation_page.content, "html.parser")
+        rows = year_soup.find(
+            "div", {"class": "PodiumTB"}).find_all(
+            "div", {"class": "TCTT_ligne"})
+        # first row is the header, so we skip it
+        for row in rows[1:]:
+            cells = row.find_all("p")
+            matches = country_pattern.search(cells[1].find("img").attrs['src'])
+            ranking.append({
+                "position": int(cells[0].text),
+                "country": matches[1],
+                "player_count": int(cells[2].text),
+                "top3_average": french_float(cells[3].text),
+                })
+        return ranking
 
 class Tournament_Scraper:
     def __init__(self, session):
         self.session = session
-
-    def french_float(self, number_string):
-        return float(number_string.replace(',', '.'))
 
     def dash_to_0(self, number_string):
         number_string = number_string.strip()
@@ -197,7 +214,7 @@ class Tournament_Scraper:
         # get mers weight
         try:
             weight_string = tournament_info[12].string.strip().split("(")[0]
-            weight = self.french_float(weight_string)
+            weight = french_float(weight_string)
         except:
             weight = 0
 
@@ -300,12 +317,12 @@ class Tournament_Scraper:
             # get the official rankings for both rulesets
             rows = tables[1].find_all("tr")
             try:
-                rank = self.french_float(rows[2].find_all("td")[2].text)
+                rank = french_float(rows[2].find_all("td")[2].text)
             except:
                 rank = None
             p.official_mcr_rank = rank
             try:
-                rank = self.french_float(rows[3].find_all("td")[2].text)
+                rank = french_float(rows[3].find_all("td")[2].text)
             except:
                 rank = None
             p.official_riichi_rank = rank
@@ -349,7 +366,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
 
             # if it's MCR, grab table points too
             if is_mcr:
-                table_points = self.french_float(self.dash_to_0(
+                table_points = french_float(self.dash_to_0(
                     result_content[5].text))
             else:
                 table_points = None
