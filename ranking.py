@@ -166,6 +166,7 @@ class PlayerRankingEngine:
         players = self.db.query(Player).all()
         for p in players:
             self.rank_player(p)
+        self.db.commit()
         if assess:
             self.assess_player_ranking()
 
