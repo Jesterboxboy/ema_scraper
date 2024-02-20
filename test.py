@@ -24,8 +24,8 @@ engine = create_engine(DBPATH, poolclass=NullPool)
 
 def rank_countries(db):
     r = CountryRankingEngine(db)
-    r.rank_countries_for_one_ruleset(RulesetClass.Riichi, assess=True)
-    r.rank_countries_for_one_ruleset(RulesetClass.MCR, assess=True)
+    r.rank_countries_for_one_ruleset(RulesetClass.riichi, assess=True)
+    r.rank_countries_for_one_ruleset(RulesetClass.mcr, assess=True)
 
 def rank_players(db):
     PlayerRankingEngine(db).rank_all_players(assess=True)
@@ -40,9 +40,9 @@ def make_quotas(db): # TODO
 with Session(engine) as db:
     # scrape_tournaments(db)
     # rank_players(db)
-    # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.Riichi)
-    # rank_countries(db)
-    make_quotas(db)
+    # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
+    rank_countries(db)
+    # make_quotas(db)
     pass
 
 print("done")

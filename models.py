@@ -1,13 +1,3 @@
-'''
-
-TODO
-
-I'm starting to wonder whether the answer is to have one database per ruleset,
-with player IDs in common across the two databases.
-It would simplify a lot of the code
-
-'''
-
 import enum
 from datetime import datetime
 from typing import Optional, List
@@ -24,8 +14,8 @@ metadata = Base.metadata
 
 
 class RulesetClass(enum.Enum):
-    Riichi = "Riichi"
-    MCR = "MCR"
+    riichi = "riichi"
+    mcr = "mcr"
 
 Ruleset: Enum = Enum(
     # this may trigger an error in alembic
@@ -48,16 +38,16 @@ class Country(Base):
     national_org_name: Mapped[Optional[str]]
     national_org_url: Mapped[Optional[str]]
 
-    country_ranking_MCR: Mapped[Optional[int]]
+    country_ranking_mcr: Mapped[Optional[int]]
     # number of qualifying players
-    player_count_MCR: Mapped[Optional[int]]
+    player_count_mcr: Mapped[Optional[int]]
     # number of players with personal rank over 700
-    over700_MCR: Mapped[Optional[int]]
-    average_rank_of_top3_players_MCR: Mapped[Optional[float]]
+    over700_mcr: Mapped[Optional[int]]
+    average_rank_of_top3_players_mcr: Mapped[Optional[float]]
     # number of ranked players / total EMA-wide number of ranked players
-    propn_of_all_ranked_players_MCR: Mapped[Optional[float]]
+    propn_of_all_ranked_players_mcr: Mapped[Optional[float]]
     # number of 700+ players / total EMA-wide number of 700+ players
-    propn_of_all_players_700plus_MCR: Mapped[Optional[float]]
+    propn_of_all_players_700plus_mcr: Mapped[Optional[float]]
 
     country_ranking_riichi: Mapped[Optional[int]]
     # number of qualifying players
@@ -122,7 +112,7 @@ class Player(Base):
     def rank(self, ruleset, rank: int):
         if rank is not None:
             rank = round(rank * 100) / 100
-        if ruleset == RulesetClass.MCR:
+        if ruleset == RulesetClass.mcr:
             self.mcr_rank = rank
         else:
             self.riichi_rank = rank
