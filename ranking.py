@@ -173,30 +173,25 @@ class PlayerRankingEngine:
     def assess_player_ranking(self):
         total = 0
         bad = 0
+        acceptable = 0.02
         for p in self.db.query(Player).all():
             total +=1
-            if p.official_mcr_rank is None:
-                if p.mcr_rank is not None:
-                    bad += 1
-                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
-                    logging.warning(f"official MCR rank is None. \nWe calculate {p.mcr_rank}\n")
-            else:
-                delta = p.official_mcr_rank - p.mcr_rank
-                if abs(delta) > 0.02:
-                    bad += 1
-                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
-                    logging.warning(f"official MCR rank is {p.official_mcr_rank}.\nWe calculate {p.mcr_rank}\n")
-
-            if p.official_riichi_rank is None:
-                if p.riichi_rank is not None:
-                    bad += 1
-                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
-                    logging.warning(f"official riichi rank is None. \nWe calculate {p.riichi_rank}\n")
-            else:
-                delta = p.official_riichi_rank - p.riichi_rank
-                if abs(delta) > 0.02:
-                    bad += 1
-                    logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
-                    logging.warning(f"official riichi rank is {p.official_riichi_rank}.\nWe calculate {p.riichi_rank}\n")
+            for rules in ("mcr", "riichi"):
+                if getattr(p, f"official_{rules}_rank") is None:
+                    if getattr(p, f"{rules}_rank") is not None:
+                        bad += 1
+                        logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
+                        logging.warning(f"""official {rules} rank is None.
+                            We calculate """ + getattr(p, f"{rules}_rank"))
+                else:
+                    delta = getattr(p, f"official_{rules}_rank") - \
+                        getattr(p, f"{rules}_rank")
+                    if abs(delta) > acceptable:
+                        bad += 1
+                        logging.warning(
+                            f"mismatch for {p.calling_name} {p.ema_id}")
+                        logging.warning(f"official {rules} rank is " +
+                            getattr(p, f"official_{rules}_rank") +
+                            "\nWe calculate " + getattr(p, f"{rules}_rank"))
 
         logging.info(f"{total} calcs done, of which {bad} were bad")

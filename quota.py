@@ -142,13 +142,10 @@ class CountryRankingEngine:
                     c_700plus / self.players700plus)
             setattr(c, f"propn_of_all_ranked_players_{rules}",
                     player_count / self.player_count)
+            setattr(c, f"country_ranking_{rules}", None)
             if player_count > 0:
                 top3 = c_all.limit(3)
-                top3ranks = [
-                    p.mcr_rank for p in top3
-                    ] if is_mcr else [
-                    p.riichi_rank for p in top3
-                    ]
+                top3ranks = [getattr(p, f"{rules}_rank") for p in top3]
                 average_rank_of_top3_players = round(sum(top3ranks)/3, 2)
             else:
                 average_rank_of_top3_players = None
@@ -167,6 +164,7 @@ class CountryRankingEngine:
             suffix = "MCR" if is_mcr else "RCR"
             url = f"https://silk.mahjong.ie/ranking/BestNation_{suffix}.html"
             official = Country_Scraper.scrape_country_rankings(url)
+
 
         pos = 1
         logging.info(f"Country rankings for {ruleset}")
