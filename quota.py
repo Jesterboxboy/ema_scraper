@@ -55,11 +55,49 @@
 # ================================================
 
 import logging
+import sys
 from datetime import datetime
 
 from scrapers import Country_Scraper
 from models import Player, Country, RulesetClass
 from ranking import PlayerRankingEngine
+
+
+class QuotaMaker(): # doesn't work, nothing here yet
+    def __init(self, db, quota: int, ruleset: RulesetClass):
+        self.db = db
+        self.total = quota
+        self.quotas = []
+        self.caps = []
+        self.is_mcr = ruleset == RulesetClass.MCR
+
+    def seat(self, number: int = 1):
+        self.total -= number
+        if self.total < 0:
+            logging.error(f"allocated {-self.total} more seats than available!")
+            print("quota broken")
+            sys.exit(-1)
+        return number
+
+    def calc_caps(self, countries):
+        players = self.db.query(Player).filter(
+            Player.ema_id != -1).filter(
+            Player.country_id != "??")
+        if self.is_mcr:
+            players = players.filter(Player.mcr_rank != None)
+            average = sum(p.mcr_rank for p in players) / len(players.all())
+        else:
+            players = players.filter(Player.riichi_rank != None)
+            average = sum(p.riichi_rank for p in players) / len(players.all())
+
+        for c in countries:
+            self.quotas.append(self.seat()) # ensure at least one seat per country
+            self.caps.append(max(1, len(players)))
+
+    def make(self):
+        countries = self.db.query(Country).filter(Country.id != "??") # .filter(Country.ema_since > 0)
+        for c in countries:
+            self.quotas.append(self.seat()) # ensure at least one seat per country
 
 
 class Quota():
@@ -76,7 +114,7 @@ class Quota():
     country_ranking: int
 
 
-class CountryRankingEngine: # NONE OF THE BELOW WORKS YET
+class CountryRankingEngine:
     def __init__(self, db):
         self.db = db
 
@@ -87,13 +125,16 @@ class CountryRankingEngine: # NONE OF THE BELOW WORKS YET
             reckoning_day: datetime = None,
             assess: bool = False,
             ):
+        """ this has become a big sprawly function which ranks the countries
+        for a given ruleset. The ranking is based on the average rank for the
+        top 3 players in each country. If a country has less than three players
+        then the sum of the country's players' rankings is divided by 3"""
 
         if reckoning_day is not None:
             PlayerRankingEngine(self.db).rank_all_players(reckoning_day)
 
         ema = [] # list of ema countries
 
-        # PlayerRankingEngine(db).rank_all_players(reckoning_day)
         is_mcr = ruleset == RulesetClass.MCR
         if is_mcr:
             all_players = self.db.query(Player).filter(
@@ -191,8 +232,3 @@ class CountryRankingEngine: # NONE OF THE BELOW WORKS YET
             logging.info(f"{total} rows tested, {bad} rows bad")
 
         self.db.commit()
-
-
-class QuotaMaker():
-    def __init(self):
-        pass

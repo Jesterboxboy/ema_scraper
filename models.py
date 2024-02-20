@@ -1,3 +1,13 @@
+'''
+
+TODO
+
+I'm starting to wonder whether the answer is to have one database per ruleset,
+with player IDs in common across the two databases.
+It would simplify a lot of the code
+
+'''
+
 import enum
 from datetime import datetime
 from typing import Optional, List
