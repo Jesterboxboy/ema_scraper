@@ -38,11 +38,11 @@ def make_quotas(db): # TODO
     pass
 
 with Session(engine) as db:
-    # scrape_tournaments(db)
-    # rank_players(db)
-    # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
+    #scrape_tournaments(db)
+    rank_players(db)
     rank_countries(db)
     # make_quotas(db)
+    # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
 
 print("done")

@@ -67,8 +67,6 @@ class QuotaMaker(): # doesn't work, nothing here yet
     def __init(self, db, quota: int, ruleset: RulesetClass):
         self.db = db
         self.total = quota
-        self.quotas = []
-        self.caps = []
         self.rules = "mcr" if ruleset == RulesetClass.mcr else "riichi"
 
     def seat(self, number: int = 1):
@@ -79,21 +77,28 @@ class QuotaMaker(): # doesn't work, nothing here yet
             sys.exit(-1)
         return number
 
-    def calc_caps(self, countries):
+    def calc_caps(self):
+        self.quotas = []
+        self.caps = []
         players = self.db.query(Player).filter(
             Player.ema_id != -1).filter(
             Player.country_id != "??")
         players = players.filter(Player.mcr_rank != None)
-        average = sum(p.mcr_rank for p in players) / len(players.all())
+        rank_column = f"{self.rules}_rank"
+        average = sum(getattr(Player, rank_column) for p in players) \
+            / len(players.all())
 
-        for c in countries:
+        for c in self.countries:
             self.quotas.append(self.seat()) # ensure at least one seat per country
-            self.caps.append(max(1, len(players)))
+            cap = len(players.filter(
+                getattr(Player, rank_column) > average).all())
+            self.caps.append(max(1, cap))
 
     def make(self):
-        countries = self.db.query(Country).filter(Country.id != "??") # .filter(Country.ema_since > 0)
-        for c in countries:
-            self.quotas.append(self.seat()) # ensure at least one seat per country
+        self.countries = self.db.query(Country).filter(Country.id != "??") # .filter(Country.ema_since > 0)
+        self.calc_caps()
+        for c in self.countries:
+            pass
 
 
 class CountryRankingEngine:

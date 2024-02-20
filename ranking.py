@@ -147,8 +147,8 @@ class PlayerRankingEngine:
         And if they have more than 5 results, return the best """
         if len(results) < 2:
             return None
-        # sort the results in descending base_rank order
-        results.sort(key=lambda s: -s.base_rank)
+        # sort the results in descending base_rank order (and by highest mers to break ties)
+        results.sort(key=lambda s: -s.base_rank - s.aged_mers/1000)
         # pad the list to at least 5 results
         while len(results) < 5:
             results.append(PlayerTournament(
@@ -191,7 +191,8 @@ class PlayerRankingEngine:
                         logging.warning(
                             f"mismatch for {p.calling_name} {p.ema_id}")
                         logging.warning(f"official {rules} rank is " +
-                            getattr(p, f"official_{rules}_rank") +
-                            "\nWe calculate " + getattr(p, f"{rules}_rank"))
+                            str(getattr(p, f"official_{rules}_rank")) +
+                            "\nWe calculate " +
+                            str(getattr(p, f"{rules}_rank")))
 
         logging.info(f"{total} calcs done, of which {bad} were bad")
