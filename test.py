@@ -1,14 +1,18 @@
 from datetime import datetime
 import sys
-from models import Player, Tournament, PlayerTournament, Country, RulesetClass
-from scrapers import Tournament_Scraper, Country_Scraper
-from ranking import PlayerRankingEngine
-from quota import CountryRankingEngine
+import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 
-import logging
+from config import DBPATH
+from models import Player, Tournament, PlayerTournament, Country, RulesetClass
+from scrapers import Tournament_Scraper, Country_Scraper
+from ranking import PlayerRankingEngine
+from country_ranking import CountryRankingEngine
+from quota import QuotaMaker
+
 logging.basicConfig(
     filename='testpy.log',
     filemode='w', # ensure log file always writes fresh, rather than appending to previous log
@@ -17,17 +21,29 @@ logging.basicConfig(
     )
 
 logging.info(datetime.now())
-engine = create_engine('sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3')
+engine = create_engine(DBPATH, poolclass=NullPool)
 
-with Session(engine) as session:
-    #c = Country_Scraper(session)
-    #c.scrape_country_rankings("https://silk.mahjong.ie/ranking/BestNation_RCR.html")
-    # PlayerRankingEngine(session).rank_all_players(assess=True)
-    r = CountryRankingEngine(session)
-    r.rank_countries_for_one_ruleset(RulesetClass.Riichi, assess=True)
-    r.rank_countries_for_one_ruleset(RulesetClass.MCR, assess=True)
-    #Tournament_Scraper(session).scrape_all()
-    #PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.Riichi)
+def rank_countries(db):
+    r = CountryRankingEngine(db)
+    r.rank_countries_for_one_ruleset(RulesetClass.riichi, assess=True)
+    r.rank_countries_for_one_ruleset(RulesetClass.mcr, assess=True)
+
+def rank_players(db):
+    PlayerRankingEngine(db).rank_all_players(assess=True)
+
+def scrape_tournaments(db):
+    Tournament_Scraper(db).scrape_all()
+
+def make_quotas(db):
+    QuotaMaker(db, 40, RulesetClass.mcr).make()
+    QuotaMaker(db, 140, RulesetClass.riichi).make()
+
+with Session(engine) as db:
+    # scrape_tournaments(db)
+    # rank_players(db)
+    # rank_countries(db)
+    make_quotas(db)
+    # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
 
 print("done")

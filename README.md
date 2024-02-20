@@ -19,17 +19,26 @@ pip -r requirements.txt
 
 [models.py](models.py) contains the sqlalchemy specification for the database
 that holds all the data on players and tournaments.
-[SQLAlchemy](https://www.sqlalchemy.org/) implements and enforces
+[SQLAlchemy 2](https://www.sqlalchemy.org/) implements and enforces
 all the constraints and checks of a relational database, even if the underlying
 database is sqlite3 (as it is here).
 
+[config.py](config.py) contains user-specific configurations. At the moment,
+the only thing here is the path to the database.
+
 [ranking.py](ranking.py) contains the EMA ranking calculation. This has now
-been verified for all players bar one, for both rulesets. That one player
-has identified an ambiguity in the ranking algorithm.
+been verified for all players, for both rulesets.
+
+[country_ranking.py](country_ranking.py) contains the EMA country ranking
+calculation. This has now been verified for all countries, for both rulesets.
 
 [quota.py](quota.py) will contain the algorithm to calculate country quotas
-for quota tournaments such as WRC, ERMC, and OEMC. It also creates the country
-rankings for both rulesets (this now works)
+for quota tournaments such as WRC, ERMC, and OEMC. This does not yet work. It
+runs to completion, but does not match the examples given on the
+[mcr](https://silk.mahjong.ie/ranking/quotas_MCR.html)
+and
+[riichi](https://silk.mahjong.ie/ranking/quotas_RCR.html)
+example pages
 
 [scrapers.py](scrapers.py) contains
 the code to scrape, parse and store player & tournament info from the existing
@@ -68,9 +77,7 @@ original website
 
 ## To initialise the database
 
-At the moment, the filepath is hard-coded in
- [test.py](test.py) and [migrations/env.py](migrations/env.py). You must
- change the filepath in both places, to get it working for you.
+Set the path to your database in [config.py](config.py).
 
 Then, from the command line:
 `alembic revision --autogenerate -m "initialise db"`
@@ -85,7 +92,8 @@ structure just by changing the code in `models.py` and running
 
 The first time you run `alembic revision --autogenerate` you will subsequently
 need to edit the migration file that this creates in `migrations/versions`.
-You must remove the two `metadata=MetaData(),` clauses from the `ruleset` line
+You must remove the two `metadata=MetaData(),` clauses from the `ruleset` lines
+in the definitions of `tournament` and `player_x_tournament`
 (this is a known alembic bug, and this is the far-from-satisfactory workaround)
 
 Then:

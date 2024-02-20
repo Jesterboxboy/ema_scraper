@@ -5,13 +5,14 @@ from sqlalchemy import pool
 from alembic import context
 
 import models
+from config import DBPATH
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # os.getenv("DB_URI"))
-config.set_main_option("sqlalchemy.url", "sqlite:///d:\\zaps\\emarebuild\\ema.sqlite3")
+config.set_main_option("sqlalchemy.url", DBPATH)
 
 
 # Interpret the config file for Python logging.
@@ -21,9 +22,6 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-
 target_metadata = models.Base.metadata
 
 

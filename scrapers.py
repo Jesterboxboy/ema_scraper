@@ -158,9 +158,9 @@ class Tournament_Scraper:
             "div", {"class": "Tableau_CertifiedTournament"})
         if table_raw is not None and len(table_raw) > 0:
             # iterate over each ruleset
-            # we need to specify whether it's MCR or RCR,
+            # we need to specify whether it's mcr or RCR,
             # as ids are duplicated between them!!!
-            ruleset = RulesetClass.MCR
+            ruleset = RulesetClass.mcr
             for table in table_raw:
                 tournaments = table.findAll(
                     "div", {"class": re.compile('TCTT_ligne*')})[2:]
@@ -172,12 +172,12 @@ class Tournament_Scraper:
                         countries=cells[6].string,
                         ruleset=ruleset,
                         )
-                ruleset = RulesetClass.Riichi
+                ruleset = RulesetClass.riichi
 
     def get_bs4_tournament_page(self, tournament_id, ruleset):
         """Get the BeautifulSoup4 object for a tournament web page, given
         its old_id"""
-        prefix = "TR_" if ruleset == RulesetClass.MCR else "TR_RCR_"
+        prefix = "TR_" if ruleset == RulesetClass.mcr else "TR_RCR_"
 
         # TODO TOFIX if id < 10, then a 2-digit number is used in the URL
         if tournament_id < 10:
@@ -240,7 +240,7 @@ class Tournament_Scraper:
         t.title = tournament_info[4].text.strip().title()
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
 
-        if tournament_id == 269 and t.ruleset == RulesetClass.MCR:
+        if tournament_id == 269 and t.ruleset == RulesetClass.mcr:
             # the player count on the original web page appears to be wrong
             # for this one tournament VILLEJUIF OPEN 2017 - IN VINO VERITAS I
             t.player_count = 84
@@ -250,7 +250,7 @@ class Tournament_Scraper:
         t.effective_end_date = t.end_date
         # special handling for the 5 tournaments held in lockdown that got
         # extended eligibility periods in the rankings
-        if t.ruleset == RulesetClass.MCR:
+        if t.ruleset == RulesetClass.mcr:
             if tournament_id in (350,351,352,353):
                 t.effective_end_date = datetime(2022,7,1)
         else:
@@ -342,7 +342,7 @@ class Tournament_Scraper:
 
         self.session.query(PlayerTournament).filter_by(tournament=t).delete()
         self.session.commit()
-        is_mcr = t.ruleset == RulesetClass.MCR
+        is_mcr = t.ruleset == RulesetClass.mcr
 
         results_table = tournament_soup.findAll(
             "div", {"class": "TCTT_lignes"})[0]
@@ -364,7 +364,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
             player_id = self.dash_to_0(result_content[1].text)
             score = int(self.dash_to_0(result_content[6].text))
 
-            # if it's MCR, grab table points too
+            # if it's mcr, grab table points too
             if is_mcr:
                 table_points = french_float(self.dash_to_0(
                     result_content[5].text))
@@ -374,7 +374,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
             # if ranks are tied, the players will have the same base_rank points,
             # BUT the position shown on the webpage are WRONG
             # eg if the top three places were tied, they'd be shown
-            # as position 1,2,3 ! eg MCR 348 has two such ties
+            # as position 1,2,3 ! eg mcr 348 has two such ties
             if previous_position > 0 \
                 and table_points == previous_table_points \
                 and score == previous_score:
