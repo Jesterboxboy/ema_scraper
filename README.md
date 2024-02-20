@@ -27,12 +27,18 @@ database is sqlite3 (as it is here).
 the only thing here is the path to the database.
 
 [ranking.py](ranking.py) contains the EMA ranking calculation. This has now
-been verified for all players bar one, for both rulesets. That one player
-has identified an ambiguity in the ranking algorithm.
+been verified for all players, for both rulesets.
+
+[country_ranking.py](country_ranking.py) contains the EMA country ranking
+calculation. This has now been verified for all countries, for both rulesets.
 
 [quota.py](quota.py) will contain the algorithm to calculate country quotas
-for quota tournaments such as WRC, ERMC, and OEMC. It also creates the country
-rankings for both rulesets (this now works)
+for quota tournaments such as WRC, ERMC, and OEMC. This does not yet work. It
+runs to completion, but does not match the examples given on the
+[mcr](https://silk.mahjong.ie/ranking/quotas_MCR.html)
+and
+[riichi](https://silk.mahjong.ie/ranking/quotas_RCR.html)
+example pages
 
 [scrapers.py](scrapers.py) contains
 the code to scrape, parse and store player & tournament info from the existing

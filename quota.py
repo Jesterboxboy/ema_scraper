@@ -27,10 +27,9 @@
 
 # Each country can’t get more seats than numbers of players who have
 # ranking > global average rank.
-# An EMA country can’t have a quota of 0 seats.
 # Each EMA country has at least 1 seat.
 
-#
+
 # Redistribution
 
 # One uses the module of redistribution to refine the quotas if need be,
@@ -46,7 +45,7 @@
 # The 3 best countries have already reached the max (can’t get more than
 # average). So, we give seats to countries ranked at 4 and 5 in the ranking
 # list.
-#
+
 
 # ================================================
 #
@@ -55,147 +54,102 @@
 # ================================================
 
 import logging
-import sys
-from datetime import datetime
 
-from scrapers import Country_Scraper
 from models import Player, Country, RulesetClass
-from ranking import PlayerRankingEngine
 
-
-class QuotaMaker(): # doesn't work, nothing here yet
-    def __init(self, db, quota: int, ruleset: RulesetClass):
+class QuotaMaker():
+    def __init__(self, db, quota: int, ruleset: RulesetClass):
         self.db = db
         self.total = quota
+        self.remaining = quota
         self.rules = "mcr" if ruleset == RulesetClass.mcr else "riichi"
+        self.quotas = []
 
-    def seat(self, number: int = 1):
-        self.total -= number
-        if self.total < 0:
-            logging.error(f"allocated {-self.total} more seats than available!")
-            print("quota broken")
-            sys.exit(-1)
-        return number
+    def seat(self, idx: int, seats: int = 1):
+        seats = min(self.remaining,
+                    seats,
+                    self.quotas[idx]["cap"] - self.quotas[idx]["quota"],
+                    )
+        self.remaining -= seats
+        self.quotas[idx]["quota"] += seats
 
     def calc_caps(self):
         self.quotas = []
-        self.caps = []
+        self.remaining = self.total
+        self.partB_sum = 0
+
         players = self.db.query(Player).filter(
             Player.ema_id != -1).filter(
             Player.country_id != "??")
-        players = players.filter(Player.mcr_rank != None)
+        players = players.filter(getattr(Player, f"{self.rules}_rank") != None)
         rank_column = f"{self.rules}_rank"
-        average = sum(getattr(Player, rank_column) for p in players) \
+        self.average = sum(getattr(p, rank_column) for p in players) \
             / len(players.all())
 
-        for c in self.countries:
-            self.quotas.append(self.seat()) # ensure at least one seat per country
-            cap = len(players.filter(
-                getattr(Player, rank_column) > average).all())
-            self.caps.append(max(1, cap))
+        for pos, c in enumerate(self.countries):
+            local_players = players.filter(Player.country_id==c.id)
+            partB1 = getattr(c, f"propn_of_all_ranked_players_{self.rules}")
+            partB2 = getattr(c, f"propn_of_all_players_700plus_{self.rules}")
+            partB3 = (partB1 + partB2) / 2
+            self.partB_sum += partB3
+
+            cap = len(local_players.filter(
+                getattr(Player, rank_column) > self.average).all())
+            self.quotas.append({
+                "cap": max(1, cap),
+                "quota": 0,
+                "partB2": partB2,
+                "partB3": partB3,
+                })
+
+            # PART A2
+
+            self.seat(pos) # ensure at least one seat per country
 
     def make(self):
-        self.countries = self.db.query(Country).filter(Country.id != "??") # .filter(Country.ema_since > 0)
+        self.countries = self.db.query(Country).filter(
+            Country.id != "??").filter(
+            Country.ema_since != None).order_by(getattr(
+            Country, f"average_rank_of_top3_players_{self.rules}").desc())
         self.calc_caps()
-        for c in self.countries:
-            pass
 
+        # PART A1 - 1 seat for each of the top 3
 
-class CountryRankingEngine:
-    def __init__(self, db):
-        self.db = db
+        for pos, c in enumerate(self.quotas):
+            self.seat(pos)
+            if pos > 1:
+                break
 
-    def rank_countries_for_one_ruleset(
-            self,
-            ruleset: RulesetClass,
-            write_to_db: bool = True,
-            reckoning_day: datetime = None,
-            assess: bool = False,
-            ):
-        """ rank the countries
-        for a given ruleset. The ranking is based on the average rank for the
-        top 3 players in each country. If a country has less than three players
-        then the sum of the country's players' rankings is nevertheless divided
-        by 3"""
+        # PART A3 - 1 seat for each country with at least one player over 700
 
-        if reckoning_day is not None:
-            PlayerRankingEngine(self.db).rank_all_players(reckoning_day)
+        for pos, c in enumerate(self.quotas):
+            if c["partB2"] > 0:
+                self.seat(pos)
 
-        ema = [] # list of ema countries
-        is_mcr = ruleset == RulesetClass.mcr
-        rules = str(ruleset).replace("RulesetClass.", "")
+        # Proportionate redistribution relative to B3
 
-        all_players = self.db.query(Player).filter(
-            Player.ema_id != -1).filter(Player.country_id != "??").filter(
-            getattr(Player, f"{rules}_rank") != None).order_by(
-            getattr(Player, f"{rules}_rank").desc())
+        remaining = self.remaining
+        for pos, c in enumerate(self.quotas):
+            self.seat(pos, remaining * int(
+                c["partB3"] / self.average))
 
-        all_700plus = all_players.filter(
-            getattr(Player, f"{rules}_rank") > 700)
+        # Final redistribution based on ranking
 
-        self.player_count = len(all_players.all())
-        self.players700plus = len(all_700plus.all())
-        for c in self.db.query(Country).filter(Country.id != "??"): # .filter(Country.ema_since is not None):
-            c_all = all_players.filter(Player.country_id == c.id)
-            player_count = len(c_all.all())
-            c_700plus = len(
-                all_700plus.filter(Player.country_id == c.id).all()
-                )
-            setattr(c, f"player_count_{rules}", player_count)
-            setattr(c, f"over700_{rules}", c_700plus)
-            setattr(c, f"propn_of_all_players_700plus_{rules}",
-                    c_700plus / self.players700plus)
-            setattr(c, f"propn_of_all_ranked_players_{rules}",
-                    player_count / self.player_count)
-            setattr(c, f"country_ranking_{rules}", None)
-            if player_count > 0:
-                top3 = c_all.limit(3)
-                top3ranks = [getattr(p, f"{rules}_rank") for p in top3]
-                average_rank_of_top3_players = round(sum(top3ranks)/3, 2)
-            else:
-                average_rank_of_top3_players = None
+        while self.remaining:
+            remaining = self.remaining
+            for pos, c in enumerate(self.quotas):
+                self.seat(pos)
+            if remaining == self.remaining:
+                logging.error("unable to allocate remaining {remaining} seats")
+                break
+        self.wrap_up()
 
-            setattr(c, f"average_rank_of_top3_players_{rules}",
-                    average_rank_of_top3_players)
-
-            if average_rank_of_top3_players is not None:
-                ema.append([c.id, average_rank_of_top3_players, player_count])
-
-        ema.sort(key=lambda x: x[1], reverse=True)
-
-        if assess:
-            total = 0
-            bad = 0
-            suffix = "MCR" if is_mcr else "RCR"
-            url = f"https://silk.mahjong.ie/ranking/BestNation_{suffix}.html"
-            official = Country_Scraper.scrape_country_rankings(url)
-
-
-        pos = 1
-        logging.info(f"Country rankings for {ruleset}")
-        for q in ema:
-            c = self.db.query(Country).filter_by(id=q[0]).first()
-            setattr(c, f"country_ranking_{rules}", pos)
-
-            if assess:
-                test = official[pos-1]
-                total += 1
-                if q[0] != test['country']:
-                    bad += 1
-                    logging.warning(f"#{pos} Country mismatch- official {test['country']}, we think {q.id}")
-                    continue
-                if q[2] != test['player_count']:
-                    bad += 1
-                    logging.warning(f"#{pos} player count mismatch- official {test['player_count']}, we think {q.player_count}")
-                    continue
-                if abs(q[1] - test['top3_average']) > 0.02:
-                    bad += 1
-                    logging.warning(f"#{pos} top3 average mismatch- official {test['top3_average']}, we think {q.average_rank_of_top3_players}")
-                    continue
-
-            pos += 1
-
-        if assess:
-            logging.info(f"{total} rows tested, {bad} rows bad")
-
-        self.db.commit()
+    def wrap_up(self):
+        """ save our quotas somewhere """ # TODO
+        logging.info(f"\n QUOTAS for {self.rules}, total {self.total}\n")
+        for pos, c in enumerate(self.quotas):
+            logging.info(f"#{pos+1} {self.countries[pos].name_english} {c['quota']}/{c['cap']}")
+        if self.remaining:
+            logging.info(f"{self.remaining} unable to be allocated")
+        else:
+            logging.info("full quota allocated")

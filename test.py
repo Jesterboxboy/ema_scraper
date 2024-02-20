@@ -10,7 +10,8 @@ from config import DBPATH
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 from scrapers import Tournament_Scraper, Country_Scraper
 from ranking import PlayerRankingEngine
-from quota import CountryRankingEngine, QuotaMaker
+from country_ranking import CountryRankingEngine
+from quota import QuotaMaker
 
 logging.basicConfig(
     filename='testpy.log',
@@ -33,15 +34,15 @@ def rank_players(db):
 def scrape_tournaments(db):
     Tournament_Scraper(db).scrape_all()
 
-def make_quotas(db): # TODO
-    q = QuotaMaker(db)
-    pass
+def make_quotas(db):
+    QuotaMaker(db, 40, RulesetClass.mcr).make()
+    QuotaMaker(db, 140, RulesetClass.riichi).make()
 
 with Session(engine) as db:
-    #scrape_tournaments(db)
-    rank_players(db)
-    rank_countries(db)
-    # make_quotas(db)
+    # scrape_tournaments(db)
+    # rank_players(db)
+    # rank_countries(db)
+    make_quotas(db)
     # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
 
