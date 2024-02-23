@@ -133,11 +133,10 @@ class QuotaMaker():
             if c["partB2"] > 0:
                 self.seat(pos)
 
-        # Proportionate redistribution relative to B3
+        # redistribution proportional to PART B3
 
-        remaining = self.remaining
         for pos, c in enumerate(self.quotas):
-            self.seat(pos, int(remaining * c["partB3"]))
+            self.seat(pos, int(self.remaining * c["partB3"]))
 
         # Final redistribution based on ranking
 
