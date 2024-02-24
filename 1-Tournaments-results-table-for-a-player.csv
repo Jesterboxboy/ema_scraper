@@ -1,0 +1,2 @@
+Date,Location,Tournament,Weight,Rank,Points,age,Power
+{{t.tournament.start_date|date}},"<div class='flag_{{t.tournament.country_id}}'>{{t.tournament.country.name_english}}, {{t.tournament.place.title()}}</div>",{{t.tournament.title}},{{t.tournament.mers}},{{t.position}}/{{t.tournament.player_count}},{{t.base_rank}},{{t.tournament.age_factor|pc}},{{t.base_rank_graphic}}

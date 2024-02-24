@@ -2,11 +2,21 @@
 
 Tool to scrape ranking data from EMA Homepage http://mahjong-europe.org/
 
+## Creating player profiles on the server
+
+As proof-of-concept, there is now a function to write a static player profile
+page based on database contents.
+
+This downloads the jinja template from https://silk.mahjong.ie/template-player/
+and populates it.
+
+The code is in [render_player.py](render_player.py)
+
 ## To install
 
 Requires Python 3.10 or later
 
-Create a venv, install the requirements and run it.
+Create a virtual environment, and install the requirements
 
 ```
 cd project_directory

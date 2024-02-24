@@ -85,7 +85,10 @@ class PlayerTournament(Base):
     # after the event, so we need the historic, not live, value
     country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
 
-    player: Mapped["Player"] = relationship(back_populates="tournaments")
+    player: Mapped["Player"] = relationship(
+        back_populates="tournaments",
+        #order_by="PlayerTournament.tournament.end_date.desc()",
+        )
     tournament: Mapped["Tournament"] = relationship(back_populates="players")
 
 
@@ -134,8 +137,7 @@ class Tournament(Base):
     player_count: Mapped[int]
     ema_country_count: Mapped[Optional[int]]
     scraped_on: Mapped[Optional[datetime]]
-
-    aged_mers: Mapped[Optional[float]] # will be calculated live
+    age_factor: Mapped[Optional[float]]
 
     country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
     country: Mapped[Optional[Country]] = relationship(back_populates="tournaments")

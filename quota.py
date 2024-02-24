@@ -66,6 +66,8 @@ class QuotaMaker():
         self.quotas = []
 
     def seat(self, idx: int, seats: int = 1):
+        if seats < 0:
+            logging.error("Asked to allocate {seats} to country #{idx}")
         seats = min(self.remaining,
                     seats,
                     self.quotas[idx]["cap"] - self.quotas[idx]["quota"],
@@ -83,13 +85,18 @@ class QuotaMaker():
             Player.country_id != "??")
         players = players.filter(getattr(Player, f"{self.rules}_rank") != None)
         rank_column = f"{self.rules}_rank"
+        player_count = len(players.all())
         self.average = sum(getattr(p, rank_column) for p in players) \
-            / len(players.all())
+            / player_count
+
+        player700_count = 0
+        for c in self.countries:
+            player700_count += getattr(c, f"over700_{self.rules}")
 
         for pos, c in enumerate(self.countries):
             local_players = players.filter(Player.country_id==c.id)
-            partB1 = getattr(c, f"propn_of_all_ranked_players_{self.rules}")
-            partB2 = getattr(c, f"propn_of_all_players_700plus_{self.rules}")
+            partB1 = getattr(c, f"player_count_{self.rules}") / player_count
+            partB2 = getattr(c, f"over700_{self.rules}") / player700_count
             partB3 = (partB1 + partB2) / 2
             self.partB_sum += partB3
 
@@ -126,12 +133,10 @@ class QuotaMaker():
             if c["partB2"] > 0:
                 self.seat(pos)
 
-        # Proportionate redistribution relative to B3
+        # redistribution proportional to PART B3
 
-        remaining = self.remaining
         for pos, c in enumerate(self.quotas):
-            self.seat(pos, remaining * int(
-                c["partB3"] / self.average))
+            self.seat(pos, int(self.remaining * c["partB3"]))
 
         # Final redistribution based on ranking
 
@@ -148,7 +153,7 @@ class QuotaMaker():
         """ save our quotas somewhere """ # TODO
         logging.info(f"\n QUOTAS for {self.rules}, total {self.total}\n")
         for pos, c in enumerate(self.quotas):
-            logging.info(f"#{pos+1} {self.countries[pos].name_english} {c['quota']}/{c['cap']}")
+            logging.info(f"#{pos+1} {self.countries[pos].name_english} {c}") # ['quota']}/{c['cap']
         if self.remaining:
             logging.info(f"{self.remaining} unable to be allocated")
         else:

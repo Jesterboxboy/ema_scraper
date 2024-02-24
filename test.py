@@ -12,6 +12,7 @@ from scrapers import Tournament_Scraper, Country_Scraper
 from ranking import PlayerRankingEngine
 from country_ranking import CountryRankingEngine
 from quota import QuotaMaker
+from get_results import results_to_db
 
 logging.basicConfig(
     filename='testpy.log',
@@ -39,10 +40,11 @@ def make_quotas(db):
     QuotaMaker(db, 140, RulesetClass.riichi).make()
 
 with Session(engine) as db:
+    results_to_db(db, 'd:\\zaps\\emarebuild\\test.xls')
     # scrape_tournaments(db)
     # rank_players(db)
     # rank_countries(db)
-    make_quotas(db)
+    # make_quotas(db)
     # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
 

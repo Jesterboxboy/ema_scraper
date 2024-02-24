@@ -79,7 +79,7 @@ class Tournament_Scraper:
         self.session.commit()
         return c
 
-    def parse_dates(self, raw_date: str, title: str):
+    def parse_dates(raw_date: str, title: str):
         """we have dates in a bunch of formats, so this tries different tools
         in turn. Some recorded dates are just weird, so there's a bunch of
         one-off handling as the cleanest way to handle them, rather than
@@ -218,7 +218,7 @@ class Tournament_Scraper:
         except:
             weight = 0
 
-        place = tournament_info[6].text.lstrip().split("(")[0]
+        place = tournament_info[6].text.lstrip().split("(")[0].title()
         country_string = tournament_info[6].findAll("a")[0]["href"]
         country_match = country_link_pattern.search(country_string)
         old3 = "???" if country_match is None else \
