@@ -86,16 +86,16 @@ class PlayerRankingEngine:
         halving_day = self.yearsPrior(1, reckoning_day)
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date < expiry_day).
-            values(aged_mers = 0.0))
+            values(age_factor = 0.0))
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date >= expiry_day).
             where(Tournament.effective_end_date < halving_day).
-            values(aged_mers = Tournament.mers * 0.5))
+            values(age_factor = 0.5))
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date > halving_day).
-            values(aged_mers = Tournament.mers))
+            values(age_factor = 1.0))
         self.db.execute(update(PlayerTournament).values(aged_mers =
-            Tournament.aged_mers).
+            Tournament.age_factor * Tournament.mers).
             where(Tournament.id == PlayerTournament.tournament_id))
         self.db.commit()
 

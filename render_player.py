@@ -3,17 +3,20 @@ import jinja2
 import requests
 from bs4 import BeautifulSoup as bs
 from models import Player, RulesetClass
-from config import DBPATH
+from config import DBPATH, HTMLPATH
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
+def percent_format(val: float):
+    return f"{round(val*100)}%"
 
 def datetime_format(value, format="%Y-%m-%d"):
     return value.strftime(format)
 
 jinja = jinja2.Environment()
 jinja.filters["date"] = datetime_format
+jinja.filters["pc"] = percent_format
 
 engine = create_engine(DBPATH, poolclass=NullPool)
 
@@ -28,6 +31,8 @@ def fill_player_tournament_table(rules, results):
     zone = dom.find(id=f"{rules}_results")
     tbody = zone.find("tbody")
     row = tbody.find("tr")
+    row['class'].append(
+        '{% if not t.tournament.age_factor %}emahide0{% endif %}')
 
     results.sort(
             key=lambda t: t.tournament.end_date,
@@ -63,5 +68,5 @@ with Session(engine) as db:
     fill_player_tournament_table('mcr', mcr)
     fill_player_tournament_table('riichi', riichi)
 
-with open(f"{id}.html", "w", encoding='utf-8') as file:
+with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
     file.write(str(dom))

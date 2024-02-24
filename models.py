@@ -137,8 +137,7 @@ class Tournament(Base):
     player_count: Mapped[int]
     ema_country_count: Mapped[Optional[int]]
     scraped_on: Mapped[Optional[datetime]]
-
-    aged_mers: Mapped[Optional[float]] # will be calculated live
+    age_factor: Mapped[Optional[float]]
 
     country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
     country: Mapped[Optional[Country]] = relationship(back_populates="tournaments")
