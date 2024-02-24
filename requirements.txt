@@ -6,3 +6,4 @@ sqlalchemy
 alembic
 daterangeparser
 dateparser
+xlrd

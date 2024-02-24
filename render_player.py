@@ -20,10 +20,6 @@ jinja.filters["pc"] = percent_format
 
 engine = create_engine(DBPATH, poolclass=NullPool)
 
-id = "07000155" # lots in each ruleset
-# id = "14990047" # riichi only
-# id = "07000002" # mcr only
-
 TOGGLER = """<script>
 jQuery(function onready() {
     jQuery('.ematoggler').on('click', function displayhiddenresults(e) {
@@ -33,10 +29,7 @@ jQuery(function onready() {
 });
 </script>"""
 
-r = requests.get("https://silk.mahjong.ie/template-player")
-
-def fill_player_tournament_table(rules, results):
-    print(rules)
+def fill_player_tournament_table(dom, rules, results):
     zone = dom.find(id=f"{rules}_results")
     tbody = zone.find("tbody")
     row = tbody.find("tr")
@@ -67,7 +60,8 @@ def fill_player_tournament_table(rules, results):
     # remove the template row, we've finished with it now
     row.decompose()
 
-with Session(engine) as db:
+def one_player(db, r, id):
+    print('.', end='')
     p = db.query(Player).filter(Player.ema_id == id).first()
     dom = bs(r.content, "html.parser")
     dom.select_one("style").append('.emahide0 {display: none;}')
@@ -86,9 +80,18 @@ with Session(engine) as db:
     new_text = t.render(p=p)
     player_zone.replace_with(bs(new_text, "html.parser"))
 
-    fill_player_tournament_table('mcr', mcr)
-    fill_player_tournament_table('riichi', riichi)
+    fill_player_tournament_table(dom, 'mcr', mcr)
+    fill_player_tournament_table(dom, 'riichi', riichi)
     dom.body.append(bs(TOGGLER, "html.parser"))
+    with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
+        file.write(str(dom))
 
-with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
-    file.write(str(dom))
+
+with Session(engine) as db:
+    r = requests.get("https://silk.mahjong.ie/template-player")
+    for id in (
+        "07000155", # lots in each ruleset
+        "14990047", # riichi only
+        "04390002", # mcr only
+        ):
+        one_player(db, r, id)

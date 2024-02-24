@@ -94,6 +94,13 @@ class PlayerRankingEngine:
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date > halving_day).
             values(age_factor = 1.0))
+
+        # this is for when we are retrospectively calculating historic quota
+        self.db.execute(update(Tournament).
+            where(Tournament.end_date > reckoning_day).
+            values(age_factor = 0.0))
+
+        # finally, weight all the results by the aged MERS factors
         self.db.execute(update(PlayerTournament).values(aged_mers =
             Tournament.age_factor * Tournament.mers).
             where(Tournament.id == PlayerTournament.tournament_id))
