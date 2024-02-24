@@ -1,0 +1,4 @@
+EMA number,{{p.ema_id}}
+Country,<div class='flag_{{p.country_id}}'>{{p.country.name_english}}</div>
+National organisation,{% if p.country.national_org_url %}<a href='p.country.national_org_url'>{{p.country.national_org_name}}</a> {% else %}{{p.country.national_org_name}}{% endif %}
+Club,{% if p.local_club_url %}<a href='p.local_club_url'>{{p.local_club}}</a> {% else %}{{p.local_club}}{% endif %}
