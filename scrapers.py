@@ -218,7 +218,7 @@ class Tournament_Scraper:
         except:
             weight = 0
 
-        place = tournament_info[6].text.lstrip().split("(")[0]
+        place = tournament_info[6].text.lstrip().split("(")[0].title()
         country_string = tournament_info[6].findAll("a")[0]["href"]
         country_match = country_link_pattern.search(country_string)
         old3 = "???" if country_match is None else \

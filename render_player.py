@@ -24,6 +24,15 @@ id = "07000155" # lots in each ruleset
 # id = "14990047" # riichi only
 # id = "07000002" # mcr only
 
+TOGGLER = """<script>
+jQuery(function onready() {
+    jQuery('.ematoggler').on('click', function displayhiddenresults(e) {
+        jQuery('.emahide0', e.target.parentNode).toggle();
+        e.target.remove();
+    });
+});
+</script>"""
+
 r = requests.get("https://silk.mahjong.ie/template-player")
 
 def fill_player_tournament_table(rules, results):
@@ -39,10 +48,21 @@ def fill_player_tournament_table(rules, results):
             reverse=True,
             )
 
+    results_to_hide = 0
     for r in results:
         j = jinja.from_string(str(row))
         new_row = j.render(t=r)
         tbody.append(bs(new_row, 'html.parser'))
+        if r.tournament.age_factor == 0:
+            results_to_hide += 1
+
+    if results_to_hide:
+        # TODO add a toggle to show tournaments with age 0
+        toggler = bs(
+            f"<a class=ematoggler>Show the {results_to_hide} results that no longer contribute to rank</a>",
+            "html.parser"
+            )
+        zone.append(toggler)
 
     # remove the template row, we've finished with it now
     row.decompose()
@@ -50,6 +70,7 @@ def fill_player_tournament_table(rules, results):
 with Session(engine) as db:
     p = db.query(Player).filter(Player.ema_id == id).first()
     dom = bs(r.content, "html.parser")
+    dom.select_one("style").append('.emahide0 {display: none;}')
     # allocate tournaments to rulesets, most recent first
     riichi = []
     mcr = []
@@ -67,6 +88,7 @@ with Session(engine) as db:
 
     fill_player_tournament_table('mcr', mcr)
     fill_player_tournament_table('riichi', riichi)
+    dom.body.append(bs(TOGGLER, "html.parser"))
 
 with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
     file.write(str(dom))
