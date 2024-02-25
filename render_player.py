@@ -1,18 +1,32 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, timezone
+
+from bs4 import BeautifulSoup as bs4
 import jinja2
 import requests
-from bs4 import BeautifulSoup as bs
-from models import Player, RulesetClass
-from config import DBPATH, HTMLPATH
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
+
+from models import Player, RulesetClass
+from config import DBPATH, HTMLPATH
 
 def percent_format(val: float):
     return f"{round(val*100)}%"
 
 def datetime_format(value, format="%Y-%m-%d"):
     return value.strftime(format)
+
+PAGE_STYLES = '''
+.ematoggler {cursor:pointer;}
+.emahide0 {display: none;}
+#mcr_results, #riichi_results {
+    border-top: 1px solid #aaf;
+    padding-top: 1em;
+    margin-top: 1em;
+}
+.dataTables_filter input[type="search"] {color: #060;}
+'''
 
 jinja = jinja2.Environment()
 jinja.filters["date"] = datetime_format
@@ -31,6 +45,9 @@ jQuery(function onready() {
 
 def fill_player_tournament_table(dom, rules, results):
     zone = dom.find(id=f"{rules}_results")
+    if not(len(results)):
+        zone.decompose()
+        return
     tbody = zone.find("tbody")
     row = tbody.find("tr")
     row['class'].append(
@@ -45,14 +62,15 @@ def fill_player_tournament_table(dom, rules, results):
     for r in results:
         j = jinja.from_string(str(row))
         new_row = j.render(t=r)
-        tbody.append(bs(new_row, 'html.parser'))
+        tbody.append(bs4(new_row, 'html.parser'))
         if r.tournament.age_factor == 0:
             results_to_hide += 1
 
     if results_to_hide:
-        # TODO add a toggle to show tournaments with age 0
-        toggler = bs(
-            f"<a class=ematoggler>Show the {results_to_hide} results that no longer contribute to rank</a>",
+        # add a toggle to show tournaments with age 0
+        toggler = bs4(
+            f'''<a class=ematoggler>Show the {results_to_hide} results that
+            no longer contribute to rank</a>''',
             "html.parser"
             )
         zone.append(toggler)
@@ -63,8 +81,8 @@ def fill_player_tournament_table(dom, rules, results):
 def one_player(db, r, id):
     print('.', end='')
     p = db.query(Player).filter(Player.ema_id == id).first()
-    dom = bs(r.content, "html.parser")
-    dom.select_one("style").append('.emahide0 {display: none;}')
+    dom = bs4(r.content, "html.parser")
+    dom.select_one("style").append(PAGE_STYLES)
     # allocate tournaments to rulesets, most recent first
     riichi = []
     mcr = []
@@ -78,11 +96,17 @@ def one_player(db, r, id):
 
     t = jinja.from_string(str(player_zone))
     new_text = t.render(p=p)
-    player_zone.replace_with(bs(new_text, "html.parser"))
+    player_zone.replace_with(bs4(new_text, "html.parser"))
 
     fill_player_tournament_table(dom, 'mcr', mcr)
     fill_player_tournament_table(dom, 'riichi', riichi)
-    dom.body.append(bs(TOGGLER, "html.parser"))
+
+    dom.find(id='colophon').replace_with(bs4(
+        f'''<footer class="site-footer" role="contentinfo">Updated:
+        {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %z')}
+                  </footer>''',
+        features="html.parser"))
+    dom.body.append(bs4(TOGGLER, "html.parser"))
     with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
         file.write(str(dom))
 
