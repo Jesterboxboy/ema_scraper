@@ -79,6 +79,7 @@ class Tournament_Scraper:
         self.session.commit()
         return c
 
+    @staticmethod
     def parse_dates(raw_date: str, title: str):
         """we have dates in a bunch of formats, so this tries different tools
         in turn. Some recorded dates are just weird, so there's a bunch of
@@ -285,7 +286,7 @@ class Tournament_Scraper:
             tables = dom.findAll(
                 "div", {"class": "contentpaneopen"})[0].findAll("table")
             rows = tables[0].find_all("tr")
-            p.calling_name = rows[2].find_all("td")[1].string
+            p.calling_name = rows[2].find_all("td")[1].string.title()
             names = p.calling_name.split(" ")
             p.sorting_name = names[-1] + ", " + "  ".join(names[0:-1])
             pic = rows[0].find("img").attrs["src"]
