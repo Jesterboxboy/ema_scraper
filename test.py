@@ -40,7 +40,7 @@ def make_quotas(db):
     QuotaMaker(db, 140, RulesetClass.riichi).make()
 
 with Session(engine) as db:
-    results_to_db(db, 'd:\\zaps\\emarebuild\\test.xls')
+    results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
     # scrape_tournaments(db)
     # rank_players(db)
     # rank_countries(db)

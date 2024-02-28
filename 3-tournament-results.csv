@@ -1,0 +1,2 @@
+,Name,Country,Table points,Score,Ranking
+{{pt.position}},{% if p.ema_id == -1 %}{{p.calling_name}}{% else %}<a href='/player/ranking/{{p.ema_id}}.html'>{{p.calling_name}}</a>{% endif %},{{p.country.name_english}},{{pt.table_points}},{{pt.score}},{{pt.base_rank}}

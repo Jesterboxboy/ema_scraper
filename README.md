@@ -2,16 +2,6 @@
 
 Tool to scrape ranking data from EMA Homepage http://mahjong-europe.org/
 
-## Creating player profiles on the server
-
-As proof-of-concept, there is now a function to write a static player profile
-page based on database contents.
-
-This downloads the jinja template from https://silk.mahjong.ie/template-player/
-and populates it.
-
-The code is in [render_player.py](render_player.py)
-
 ## To install
 
 Requires Python 3.10 or later
@@ -35,6 +25,17 @@ database is sqlite3 (as it is here).
 
 [config.py](config.py) contains user-specific configurations. At the moment,
 the only thing here is the path to the database.
+
+[get_results.py](get_results.py) processes the current results template, and
+stores the results in the database (Work in progress)
+
+[render_player.py](render_player.py) write a static player profile
+page. This downloads the jinja template from
+https://silk.mahjong.ie/template-player/ and populates it.
+
+[render_results.py](render_results.py) writes a static tournament results
+page. This downloads the jinja template from
+https://silk.mahjong.ie/template-results/ and populates it.
 
 [ranking.py](ranking.py) contains the EMA ranking calculation. This has now
 been verified for all players, for both rulesets.
@@ -109,3 +110,13 @@ in the definitions of `tournament` and `player_x_tournament`
 Then:
 `alembic upgrade head`
 will create the database file.
+
+## Wider environment
+
+Current development assumes a final platform of Wordpress with
+the Decode theme, (which is no longer supported, but is a lovely clean theme)
+and the [Tablepress plugin](https://wordpress.org/plugins/tablepress/). The
+Tablepress tables are exported into CSV files, which are tracked in this
+repository.
+
+I'm pretty agnostic on this, and adapting it to other platforms should be easy.

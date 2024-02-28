@@ -17,6 +17,8 @@ def percent_format(val: float):
 def datetime_format(value, format="%Y-%m-%d"):
     return value.strftime(format)
 
+# TODO these will all go into a css file at some point,
+#      but for now, they're easy to edit here
 PAGE_STYLES = '''
 .ematoggler {cursor:pointer;}
 .emahide0 {display: none;}
@@ -26,6 +28,11 @@ PAGE_STYLES = '''
     margin-top: 1em;
 }
 .dataTables_filter input[type="search"] {color: #060;}
+footer.site-footer {
+    color: #666;
+    font-size: 0.8em;
+    text-align: center;
+}
 '''
 
 jinja = jinja2.Environment()
@@ -104,12 +111,18 @@ def one_player(db, r, id):
     dom.find(id='colophon').replace_with(bs4(
         f'''<footer class="site-footer" role="contentinfo">Updated:
         {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %z')}
-                  </footer>''',
+        </footer>''',
         features="html.parser"))
     dom.body.append(bs4(TOGGLER, "html.parser"))
     with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
         file.write(str(dom))
 
+    with open(HTMLPATH / "Players" / f"{p.ema_id}.html", "w",
+              encoding='utf-8') as file:
+        file.write(f'''<?php
+                   header("HTTP/1.1 301 Moved Permanently");
+                   header("Location: /ranking/Players/{id}.html");
+                   exit();''')
 
 with Session(engine) as db:
     r = requests.get("https://silk.mahjong.ie/template-player")
