@@ -24,7 +24,7 @@ all the constraints and checks of a relational database, even if the underlying
 database is sqlite3 (as it is here).
 
 [config.py](config.py) contains user-specific configurations. At the moment,
-the only thing here is the path to the database.
+this is the path to the database, and the directory for html output files.
 
 [get_results.py](get_results.py) processes the current results template, and
 stores the results in the database (Work in progress)
@@ -93,8 +93,7 @@ Set the path to your database in [config.py](config.py).
 Then, from the command line:
 `alembic revision --autogenerate -m "initialise db"`
 
-The `autogenerate` means that alembic will read the (models.py)[models.py]
-file,
+The `autogenerate` means that alembic will read `models.py`,
 compare the implied database structure to the previous version, and create a
 database migration file to update the database from the previous version to a
 new version that satisfies `models.py`. So you can change the database

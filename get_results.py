@@ -23,6 +23,7 @@ def results_to_db(db, file, sheet):
     rules = sh.cell_value(rowx=2, colx=15)
     raw_date = sh.cell_value(rowx=2, colx=16)
     start_date, end_date = Tournament_Scraper.parse_dates(raw_date, title)
+    day_count = sh.cell_value(rowx=2, colx=17)  # TODO
 
     country = db.query(Country).filter(Country.old3 == country3).first()
     if country is None:

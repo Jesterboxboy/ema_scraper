@@ -127,15 +127,6 @@ class Tournament_Scraper:
                 if start_date is None:
                     try:
                         end_date = start_date = du_parse(raw_date)
-                        if start_date.hour + start_date.minute > 0:
-                            # tournament dates don't have any time specified,
-                            # so if we've got a time, we've mis-parsed it
-                            start_date = end_date = None
-                            if "." in raw_date:
-                                start_date, end_date = self.parse_dates(
-                                    raw_date.replace(".", " "),
-                                    title,
-                                    )
                     except:
                         start_date = end_date = None
                 if start_date is None:
@@ -143,6 +134,16 @@ class Tournament_Scraper:
                         end_date = start_date = dp_parse(raw_date)
                     except:
                         start_date = end_date = None
+                if start_date is None or \
+                    start_date.hour + start_date.minute > 0:
+                    # tournament dates don't have any time specified,
+                    # so if we've got a time, we've mis-parsed it
+                    start_date = end_date = None
+                    if "." in raw_date:
+                        start_date, end_date = Tournament_Scraper.parse_dates(
+                            raw_date.replace(".", " "),
+                            title,
+                            )
 
         if start_date is None:
             logging.error(f"can't date '{raw_date}' for '{title}'")
