@@ -3,7 +3,7 @@
 import from the existing xls results workbook
 '''
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import xlrd
 
@@ -11,41 +11,42 @@ from models import Player, Tournament, PlayerTournament, RulesetClass, Country
 from scrapers import Tournament_Scraper
 from ranking import PlayerRankingEngine
 
-def results_to_db(db, file, sheet):
+def results_to_db(db, file: str, sheet: str) -> Tournament:
     book = xlrd.open_workbook(file)
     sh = book.sheet_by_name(sheet)
 
-    # first create tournament
-    title = sh.cell_value(rowx=2, colx=0)
-    player_count = int(sh.cell_value(rowx=2, colx=1))
-    country3 = sh.cell_value(rowx=2, colx=11)
-    mers = sh.cell_value(rowx=2, colx=13)
-    rules = sh.cell_value(rowx=2, colx=15)
-    raw_date = sh.cell_value(rowx=2, colx=16)
-    start_date, end_date = Tournament_Scraper.parse_dates(raw_date, title)
-
-    country = db.query(Country).filter(Country.old3 == country3).first()
-    if country is None:
-        logging.warning(f"{country3} is not on file")
-
     t = Tournament()
     t.old_id = -1
-    t.title = title()
-    t.country = country
+    t.title = sh.cell_value(rowx=2, colx=0)
     t.place = sh.cell_value(rowx=2, colx=12)
-    t.raw_date = raw_date
-    t.start_date = start_date
-    t.end_date = t.effective_end_date = end_date
-    t.mers = mers
-    t.player_count = player_count
+    t.player_count = int(sh.cell_value(rowx=2, colx=1))
     t.scraped_on = datetime.now()
+    t.mers = sh.cell_value(rowx=2, colx=13)
+    t.raw_date = sh.cell_value(rowx=2, colx=16)
+
+    rules = sh.cell_value(rowx=2, colx=15)
     t.ruleset = RulesetClass.riichi if rules.lower() == "riichi" \
         else RulesetClass.mcr
+
+    t.start_date, t.end_date = Tournament_Scraper.parse_dates(
+        t.raw_date, t.title)
+    day_count = sh.cell_value(rowx=2, colx=17)
+    end_date2 = t.start_date + timedelta(days=day_count)
+    t.effective_end_date = t.end_date
+
+    country3 = sh.cell_value(rowx=2, colx=11)
+    t.country = db.query(Country).filter(Country.old3 == country3).first()
     db.add(t)
     db.commit()
+    if t.country is None:
+        logging.warning(f"{country3} is not on file for tournament {t.id}")
+    if t.end_date != end_date2:
+        logging.warning(
+            f'Mismatch between parsed end date {t.end_date} and calculated '
+            f'end_date {end_date2} for tournament {t.id}')
 
     # cycle through each result in turn
-    for rx in range(1,player_count+1):
+    for rx in range(1, t.player_count + 1):
         position = int(sh.cell_value(rowx=rx, colx=2))
         first_name = sh.cell_value(rowx=rx, colx=3)
         last_name = sh.cell_value(rowx=rx, colx=4)
@@ -85,7 +86,7 @@ def results_to_db(db, file, sheet):
         pt.ruleset = t.ruleset
         pt.was_ema = p.ema_id == "-1"
         db.add(pt)
-        db.commit()
 
+    db.commit()
 
-    results_to_db()
+    return t

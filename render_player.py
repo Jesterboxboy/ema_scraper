@@ -47,88 +47,95 @@ jQuery(function onready() {
         jQuery('.emahide0', e.target.parentNode).toggle();
         e.target.remove();
     });
+    if (window.location.search.includes('expand=1')) {
+            jQuery('.ematoggler').click();
+    }
 });
 </script>"""
 
-def fill_player_tournament_table(dom, rules, results):
-    zone = dom.find(id=f"{rules}_results")
-    if not(len(results)):
-        zone.decompose()
-        return
-    tbody = zone.find("tbody")
-    row = tbody.find("tr")
-    row['class'].append(
-        '{% if not t.tournament.age_factor %}emahide0{% endif %}')
+class Render_Player:
+    def __init__(self, db):
+        self.db = db
+        r = requests.get("https://silk.mahjong.ie/template-player")
+        self.template = r.content
 
-    results.sort(
-            key=lambda t: t.tournament.end_date,
-            reverse=True,
-            )
+    def fill_player_tournament_table(self, dom, rules, results):
+        zone = dom.find(id=f"{rules}_results")
+        if not(len(results)):
+            zone.decompose()
+            return
+        tbody = zone.find("tbody")
+        row = tbody.find("tr")
+        row['class'].append(
+            '{% if not t.tournament.age_factor %}emahide0{% endif %}')
 
-    results_to_hide = 0
-    for r in results:
-        j = jinja.from_string(str(row))
-        new_row = j.render(t=r)
-        tbody.append(bs4(new_row, 'html.parser'))
-        if r.tournament.age_factor == 0:
-            results_to_hide += 1
+        results.sort(
+                key=lambda t: t.tournament.end_date,
+                reverse=True,
+                )
 
-    if results_to_hide:
-        # add a toggle to show tournaments with age 0
-        toggler = bs4(
-            f'''<a class=ematoggler>Show the {results_to_hide} results that
-            no longer contribute to rank</a>''',
-            "html.parser"
-            )
-        zone.append(toggler)
+        results_to_hide = 0
+        for r in results:
+            j = jinja.from_string(str(row))
+            new_row = j.render(t=r)
+            tbody.append(bs4(new_row, 'html.parser'))
+            if r.tournament.age_factor == 0:
+                results_to_hide += 1
 
-    # remove the template row, we've finished with it now
-    row.decompose()
+        if results_to_hide:
+            # add a toggle to show tournaments with age 0
+            toggler = bs4(
+                f'''<a class=ematoggler>Show the {results_to_hide} results that
+                no longer contribute to rank</a>''',
+                "html.parser"
+                )
+            zone.append(toggler)
 
-def one_player(db, r, id):
-    print('.', end='')
-    p = db.query(Player).filter(Player.ema_id == id).first()
-    dom = bs4(r.content, "html.parser")
-    dom.select_one("style").append(PAGE_STYLES)
-    # allocate tournaments to rulesets, most recent first
-    riichi = []
-    mcr = []
-    for r in p.tournaments:
-        if r.ruleset == RulesetClass.riichi:
-            riichi.append(r)
-        else:
-            mcr.append(r)
+        # remove the template row, we've finished with it now
+        row.decompose()
 
-    player_zone = dom.find(id="player_data")
+    def one_player(self, id):
+        print('.', end='')
+        p = self.db.query(Player).filter(Player.ema_id == id).first()
+        dom = bs4(self.template, "html.parser")
+        dom.select_one("style").append(PAGE_STYLES)
+        # allocate tournaments to rulesets, most recent first
+        riichi = []
+        mcr = []
+        for r in p.tournaments:
+            if r.ruleset == RulesetClass.riichi:
+                riichi.append(r)
+            else:
+                mcr.append(r)
 
-    t = jinja.from_string(str(player_zone))
-    new_text = t.render(p=p)
-    player_zone.replace_with(bs4(new_text, "html.parser"))
+        player_zone = dom.find(id="player_data")
 
-    fill_player_tournament_table(dom, 'mcr', mcr)
-    fill_player_tournament_table(dom, 'riichi', riichi)
+        t = jinja.from_string(str(player_zone))
+        new_text = t.render(p=p)
+        player_zone.replace_with(bs4(new_text, "html.parser"))
 
-    dom.find(id='colophon').replace_with(bs4(
-        f'''<footer class="site-footer" role="contentinfo">Updated:
-        {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %z')}
-        </footer>''',
-        features="html.parser"))
-    dom.body.append(bs4(TOGGLER, "html.parser"))
-    with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
-        file.write(str(dom))
+        self.fill_player_tournament_table(dom, 'mcr', mcr)
+        self.fill_player_tournament_table(dom, 'riichi', riichi)
 
-    with open(HTMLPATH / "Players" / f"{p.ema_id}.html", "w",
-              encoding='utf-8') as file:
-        file.write(f'''<?php
-                   header("HTTP/1.1 301 Moved Permanently");
-                   header("Location: /ranking/Players/{id}.html");
-                   exit();''')
+        dom.find(id='colophon').replace_with(bs4(
+            f'''<footer class="site-footer" role="contentinfo">Updated:
+            {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %z')}
+            </footer>''',
+            features="html.parser"))
+        dom.body.append(bs4(TOGGLER, "html.parser"))
+        with open(HTMLPATH / "Players" / f"{p.id}.html", "w", encoding='utf-8') as file:
+            file.write(str(dom))
 
-with Session(engine) as db:
-    r = requests.get("https://silk.mahjong.ie/template-player")
-    for id in (
-        "07000155", # lots in each ruleset
-        "14990047", # riichi only
-        "04390002", # mcr only
-        ):
-        one_player(db, r, id)
+        with open(HTMLPATH / "Players" / f"{p.ema_id}.html", "w",
+                  encoding='utf-8') as file:
+            file.write(f'''<?php
+                       header("HTTP/1.1 301 Moved Permanently");
+                       header("Location: /ranking/Players/{p.id}");
+                       exit();''')
+
+        with open(HTMLPATH / "Players" / f"{p.ema_id}_History.html", "w",
+                  encoding='utf-8') as file:
+            file.write(f'''<?php
+                       header("HTTP/1.1 301 Moved Permanently");
+                       header("Location: /ranking/Players/{p.id}?expand=1");
+                       exit();''')

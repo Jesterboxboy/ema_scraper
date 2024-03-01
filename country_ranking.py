@@ -86,16 +86,18 @@ class CountryRankingEngine:
                 total += 1
                 if q[0] != test['country']:
                     bad += 1
-                    logging.warning(f"#{pos} Country mismatch- official {test['country']}, we think {q.id}")
-                    continue
+                    logging.warning(f"#{pos} Country mismatch- official "
+                                    f"{test['country']}, we think {q[0]}")
                 if q[2] != test['player_count']:
                     bad += 1
-                    logging.warning(f"#{pos} player count mismatch- official {test['player_count']}, we think {q.player_count}")
-                    continue
+                    logging.warning(f"#{pos} player count mismatch- official "
+                                    f"{test['player_count']}, "
+                                    f"we think {q[2]}")
                 if abs(q[1] - test['top3_average']) > 0.02:
                     bad += 1
-                    logging.warning(f"#{pos} top3 average mismatch- official {test['top3_average']}, we think {q.average_rank_of_top3_players}")
-                    continue
+                    logging.warning(f"#{pos} top3 average mismatch- official "
+                                    f"{test['top3_average']}, we think "
+                                    f"{q[1]}")
 
             pos += 1
 

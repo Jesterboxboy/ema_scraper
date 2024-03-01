@@ -52,7 +52,7 @@
 # ================================================
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from math import ceil
 
 from sqlalchemy import update
@@ -80,9 +80,7 @@ class PlayerRankingEngine:
         """For all tournaments, given reckoning day,
         age the tournament MERS weighting, and apply this aged MERS weighting
         to each tournament result"""
-        expiry_day = datetime(2019,11,15) \
-            if reckoning_day < datetime(2024, 7, 1) \
-            else self.yearsPrior(2, reckoning_day)
+        expiry_day = self.yearsPrior(2, reckoning_day)
         halving_day = self.yearsPrior(1, reckoning_day)
         self.db.execute(update(Tournament).
             where(Tournament.effective_end_date < expiry_day).
@@ -184,22 +182,24 @@ class PlayerRankingEngine:
         for p in self.db.query(Player).all():
             total +=1
             for rules in ("mcr", "riichi"):
-                if getattr(p, f"official_{rules}_rank") is None:
-                    if getattr(p, f"{rules}_rank") is not None:
-                        bad += 1
-                        logging.warning(f"mismatch for {p.calling_name} {p.ema_id}")
-                        logging.warning(f"""official {rules} rank is None.
-                            We calculate """ + getattr(p, f"{rules}_rank"))
-                else:
-                    delta = getattr(p, f"official_{rules}_rank") - \
-                        getattr(p, f"{rules}_rank")
-                    if abs(delta) > acceptable:
-                        bad += 1
-                        logging.warning(
-                            f"mismatch for {p.calling_name} {p.ema_id}")
-                        logging.warning(f"official {rules} rank is " +
-                            str(getattr(p, f"official_{rules}_rank")) +
-                            "\nWe calculate " +
-                            str(getattr(p, f"{rules}_rank")))
+                official = getattr(p, f"official_{rules}_rank")
+                ours = getattr(p, f"{rules}_rank")
+                this_bad = True
+                if (official is None and ours is not None) or (
+                        official is not None and ours is None):
+                    logging.warning(f"mismatch for {p.calling_name} "
+                        f"{p.ema_id}. official {rules} rank is {official}. "
+                        f"But we calculate {ours}")
+                elif official is None and ours is None:
+                    this_bad = False
+                elif abs(official - ours) < acceptable:
+                    this_bad = False
+
+                if this_bad:
+                    bad += 1
+                    logging.warning(
+                        f"mismatch for {p.calling_name} {p.ema_id}: "
+                        f"official {rules} rank is {official}. " +
+                        f"But We calculate {ours}.")
 
         logging.info(f"{total} calcs done, of which {bad} were bad")
