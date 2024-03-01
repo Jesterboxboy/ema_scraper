@@ -6,8 +6,9 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.parser import parse as du_parse
+from dateutil.relativedelta import relativedelta
 from dateparser import parse as dp_parse
 from daterangeparser import parse as dr_parse
 import pycountry
@@ -86,6 +87,21 @@ class Tournament_Scraper:
         one-off handling as the cleanest way to handle them, rather than
         a bunch of convoluted logic which would have the same outcome"""
         match raw_date:
+            case "26-27-28 May 2017":
+                start_date = datetime(2017, 5, 26)
+                end_date = datetime(2017, 5, 28)
+            case "30-01 June 2018":
+                start_date = datetime(2018, 6, 30)
+                end_date = datetime(2018, 7, 1)
+            case "31-1 May 2014":
+                start_date = datetime(2014, 5, 31)
+                end_date = datetime(2014, 6, 1)
+            case "29 Mar. 2013": # yes, the year does appear to be wrong!
+                start_date = datetime(2014, 3, 29)
+                end_date = datetime(2014, 3, 29)
+            case "30-01 June 2018":
+                start_date = datetime(2018, 6, 30)
+                end_date = datetime(2018, 7, 1)
             case "19-20-21 Apr. 2019":
                 start_date = datetime(2019, 4, 19)
                 end_date = datetime(2019, 4, 21)
@@ -151,7 +167,7 @@ class Tournament_Scraper:
         return start_date, end_date
 
     def scrape_tournaments_by_year(self, year):
-        print(f"getting tournaments for {year}")
+        print(f"\n getting tournaments for {year}")
         year_url = f"{URLBASE}Tournament/Tournaments_{year}.html"
         year_page = requests.get(year_url)
         year_soup = BeautifulSoup(year_page.content, "html.parser")
@@ -203,12 +219,10 @@ class Tournament_Scraper:
         t = self.session.query(Tournament).filter_by(
             old_id=tournament_id, ruleset=ruleset).first()
 
+        print('.', end='')
         is_new = t is None
         if is_new:
             t = Tournament()
-            print(f"scraping {str(ruleset).replace('RulesetClass.','')} {tournament_id}")
-        else:
-            print(f"re-scraping '{t.title}', last scraped {t.scraped_on}")
 
         tournament_soup = self.get_bs4_tournament_page(tournament_id, ruleset)
         tournament_info = tournament_soup.findAll("td")
@@ -249,15 +263,20 @@ class Tournament_Scraper:
         else:
             t.player_count = int(tournament_info[10].text.strip())
 
-        t.effective_end_date = t.end_date
+        if t.end_date < datetime(2018, 4, 18) or \
+                t.end_date >= datetime(2022, 7, 1):
+            t.effective_end_date = t.end_date
+        else:
+            # covid lockdown handling
+            t.effective_end_date = t.end_date + relativedelta(months=27)
         # special handling for the 5 tournaments held in lockdown that got
         # extended eligibility periods in the rankings
         if t.ruleset == RulesetClass.mcr:
-            if tournament_id in (350,351,352,353):
-                t.effective_end_date = datetime(2022,7,1)
+            if tournament_id in (350, 351, 352, 353):
+                t.effective_end_date = datetime(2022, 7, 1)
         else:
             if tournament_id == 269:
-                t.effective_end_date = datetime(2022,7,1)
+                t.effective_end_date = datetime(2022, 7, 1)
 
 
         t.ema_country_count = countries # TODO if this is none, calculate it manually
