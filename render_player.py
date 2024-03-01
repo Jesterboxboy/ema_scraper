@@ -47,6 +47,9 @@ jQuery(function onready() {
         jQuery('.emahide0', e.target.parentNode).toggle();
         e.target.remove();
     });
+    if (window.location.search.includes('expand=1')) {
+            jQuery('.ematoggler').click();
+    }
 });
 </script>"""
 
@@ -120,12 +123,19 @@ class Render_Player:
             </footer>''',
             features="html.parser"))
         dom.body.append(bs4(TOGGLER, "html.parser"))
-        with open(HTMLPATH / "Players" / f"{id}.html", "w", encoding='utf-8') as file:
+        with open(HTMLPATH / "Players" / f"{p.id}.html", "w", encoding='utf-8') as file:
             file.write(str(dom))
 
         with open(HTMLPATH / "Players" / f"{p.ema_id}.html", "w",
                   encoding='utf-8') as file:
             file.write(f'''<?php
                        header("HTTP/1.1 301 Moved Permanently");
-                       header("Location: /ranking/Players/{id}.html");
+                       header("Location: /ranking/Players/{p.id}");
+                       exit();''')
+
+        with open(HTMLPATH / "Players" / f"{p.ema_id}_History.html", "w",
+                  encoding='utf-8') as file:
+            file.write(f'''<?php
+                       header("HTTP/1.1 301 Moved Permanently");
+                       header("Location: /ranking/Players/{p.id}?expand=1");
                        exit();''')

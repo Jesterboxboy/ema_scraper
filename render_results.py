@@ -25,7 +25,10 @@ engine = create_engine(DBPATH, poolclass=NullPool)
 # TODO these will all go into a css file at some point,
 #      but for now, they're easy to edit here
 PAGE_STYLES = '''
-#emaflagtable {width: auto;margin:auto;}
+#emaflagtable {
+    width: auto;
+    margin:auto;
+}
 '''
 
 class Render_Results:
@@ -63,7 +66,7 @@ class Render_Results:
         return country_count
 
     def one_tournament(self, t) -> None:
-        dom = bs4(self.template.content, "html.parser")
+        dom = bs4(self.template, "html.parser")
         dom.select_one("style").append(PAGE_STYLES)
         print('.', end='')
         pt = self.db.query(PlayerTournament).filter(
@@ -113,13 +116,9 @@ class Render_Results:
 
         # add a permanent redirect from the old pathname too
         midfix = "RCR_" if t.ruleset == RulesetClass.riichi else ""
-        with open(HTMLPATH / "Tournaments" / f"TR_{midfix}_{t.id}.html", "w",
+        with open(HTMLPATH / "Tournaments" / f"TR_{midfix}_{t.old_id}.html", "w",
                   encoding='utf-8') as file:
             file.write(f'''<?php
                        header("HTTP/1.1 301 Moved Permanently");
                        header("Location: /ranking/Tournament/{t.id}.html");
                        exit();''')
-
-
-
-#

@@ -56,14 +56,15 @@ def render_players(db):
         r.one_player(id)
 
 with Session(engine) as db:
+    #render_one_results(db)
     render_players(db)
-    # results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
-    # render_one_results(db)
+    #results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
+    #render_one_results(db)
     # scrape_tournaments(db)
-    # rank_players(db)
-    # rank_countries(db)
-    # make_quotas(db)
-    # PlayerRankingEngine(session).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
+    #rank_players(db)
+    #rank_countries(db)
+    #make_quotas(db)
+    #PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
 
 print("done")
