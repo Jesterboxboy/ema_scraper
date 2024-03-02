@@ -3,9 +3,9 @@
 import logging
 from datetime import datetime
 
-from scrapers import Country_Scraper
+from utils.scrapers import Country_Scraper
 from models import Player, Country, RulesetClass
-from ranking import PlayerRankingEngine
+from calculators.ranking import PlayerRankingEngine
 
 class CountryRankingEngine:
     """ rank the countries

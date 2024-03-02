@@ -52,7 +52,7 @@
 # ================================================
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from math import ceil
 
 from sqlalchemy import update

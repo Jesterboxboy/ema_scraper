@@ -6,7 +6,7 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from dateutil.parser import parse as du_parse
 from dateutil.relativedelta import relativedelta
 from dateparser import parse as dp_parse
@@ -14,7 +14,7 @@ from daterangeparser import parse as dr_parse
 import pycountry
 
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
-from ranking import PlayerRankingEngine
+from calculators.ranking import PlayerRankingEngine
 
 country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')

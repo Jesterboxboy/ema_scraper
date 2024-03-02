@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 import xlrd
 
 from models import Player, Tournament, PlayerTournament, RulesetClass, Country
-from scrapers import Tournament_Scraper
-from ranking import PlayerRankingEngine
+from utils.scrapers import Tournament_Scraper
+from calculators.ranking import PlayerRankingEngine
 
 def results_to_db(db, file: str, sheet: str) -> Tournament:
     book = xlrd.open_workbook(file)
