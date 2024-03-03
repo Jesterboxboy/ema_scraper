@@ -15,6 +15,7 @@ from calculators.quota import QuotaMaker
 from calculators.get_results import results_to_db
 from renderers.render_results import Render_Results
 from renderers.render_player import Render_Player
+from renderers.render_year import Render_Year
 
 logging.basicConfig(
     filename='testpy.log',
@@ -66,13 +67,14 @@ def render_players(db):
 
 with Session(engine) as db:
     #scrape_tournaments(db)
-    rank_players(db)
-    rank_countries(db)
-    make_quotas(db)
-    render_one_results(db)
-    render_players(db)
-    results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
-    PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
+    Render_Year(db).years(2005, 2024)
+    # rank_players(db)
+    # rank_countries(db)
+    # make_quotas(db)
+    # render_one_results(db)
+    # render_players(db)
+    # results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
+    # PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
 
 print("done")
