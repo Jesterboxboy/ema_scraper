@@ -23,7 +23,14 @@ PAGE_STYLES = '''
   text-align: center !important;
 }
 .dataTables_filter input[type="search"] {color: #060;}
-'''
+
+element {
+}
+#mcr, #riichi {
+  border-top: 1px solid #aaf;
+  padding-top: 1em;
+  margin-top: 1em;
+}'''
 
 TOGGLER = """<script>
 jQuery(function onready() {
