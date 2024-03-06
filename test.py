@@ -35,7 +35,8 @@ def rank_countries(db):
 
 def rank_players(db):
     ''' calculate all player rankings, using today's date as the baseline'''
-    PlayerRankingEngine(db).rank_all_players(assess=True)
+    PlayerRankingEngine(db).rank_all_players(assess=True,
+        reckoning_day=datetime(2024,2,25))
 
 def scrape_tournaments(db):
     '''scrape the EMA mirror site and put all the data into our database'''
@@ -66,13 +67,13 @@ def render_players(db):
         r.one_player(id)
 
 with Session(engine) as db:
-    #scrape_tournaments(db)
-    Render_Year(db).years(2005, 2024)
+    # scrape_tournaments(db)
     # rank_players(db)
     # rank_countries(db)
     # make_quotas(db)
+    # Render_Year(db).years(2005, 2024)
     # render_one_results(db)
-    # render_players(db)
+    render_players(db)
     # results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
     # PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass

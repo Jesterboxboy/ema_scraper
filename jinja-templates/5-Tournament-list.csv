@@ -1,0 +1,2 @@
+Tournament,Place,Dates,<small>MERS</small>,<small>Players</small>,<small>Countries</small>,<small>Weight<small>
+<a href='{{t.id}}.html'>{{t.title}}</a>,"{{t.country.name_english}}, {{t.place}}",{{t.start_date|date}} - {{t.end_date|date}},{{t.mers}},{{t.player_count}},{{t.ema_country_count}},"{% if t.age_factor==0 %}<span class=""agefactor0"">{% elif t.age_factor==0.5 %}<span class=""agefactorhalf"">{% else %}<span class=""agefactor1"">{% endif %}{{'%d' % ((t.age_factor or 0)*100)}}%</span>"

@@ -341,12 +341,12 @@ class Tournament_Scraper:
                 rank = french_float(rows[2].find_all("td")[2].text)
             except:
                 rank = None
-            p.official_mcr_rank = rank
+            p.mcr_official_rank = rank
             try:
                 rank = french_float(rows[3].find_all("td")[2].text)
             except:
                 rank = None
-            p.official_riichi_rank = rank
+            p.riichi_official_rank = rank
 
         # just guess that the family name is the word after the last space
         p.profile_pic = None if pic == "photo/Vide.jpg" else pic

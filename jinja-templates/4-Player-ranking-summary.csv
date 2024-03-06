@@ -1,0 +1,5 @@
+Rules,Ranking,Points,"Tournaments
+",1st,2nd,3rd,Tournaments
+MCR,{{p.mcr_position}} <span class=emafade>/ {{t['mcr']}}</span>,{{p.mcr_rank}},{{c['mcr'][0]}},{{c['mcr'][1]}},{{c['mcr'][2]}},{{c['mcr'][3]}},{{c['mcr'][4]}}
+Riichi,{{p.riichi_position}} <span class=emafade>/ {{t['riichi']}}</span>,{{p.riichi_rank}},{{c['riichi'][0]}},{{c['riichi'][1]}},{{c['riichi'][2]}},{{c['riichi'][3]}},{{c['riichi'][4]}}
+,Ranked results,#colspan#,#colspan#,#colspan#,#colspan#,#colspan#,Non-ranked

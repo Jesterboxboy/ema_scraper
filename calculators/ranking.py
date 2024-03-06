@@ -57,7 +57,7 @@ from math import ceil
 
 from sqlalchemy import update
 
-from models import Player, Tournament, PlayerTournament, RulesetClass
+from models import Player, Tournament, PlayerTournament, RulesetClass, Settings
 
 class PlayerRankingEngine:
     def __init__(self, db):
@@ -172,6 +172,20 @@ class PlayerRankingEngine:
         for p in players:
             self.rank_player(p)
         self.db.commit()
+        # now calculate each player's position in the rankings
+        for rules in ('mcr', 'riichi'):
+            players = self.db.query(Player).filter(
+                        Player.ema_id != -1).filter(
+                        getattr(Player, f"{rules}_rank") != None).order_by(
+                        getattr(Player, f"{rules}_rank").desc()).all()
+            self.db.query(Settings).filter_by(
+                key=f"player_count_{rules}").update({"value": len(players)})
+            i = 1
+            for p in players:
+                setattr(p, f"{rules}_position", i)
+                i += 1
+        self.db.commit()
+
         if assess:
             self.assess_player_ranking()
 
@@ -182,24 +196,23 @@ class PlayerRankingEngine:
         for p in self.db.query(Player).all():
             total +=1
             for rules in ("mcr", "riichi"):
-                official = getattr(p, f"official_{rules}_rank")
+                official = getattr(p, f"{rules}_official_rank")
                 ours = getattr(p, f"{rules}_rank")
-                this_bad = True
                 if (official is None and ours is not None) or (
                         official is not None and ours is None):
-                    logging.warning(f"mismatch for {p.calling_name} "
-                        f"{p.ema_id}. official {rules} rank is {official}. "
-                        f"But we calculate {ours}")
+                    this_bad = True
                 elif official is None and ours is None:
                     this_bad = False
                 elif abs(official - ours) < acceptable:
                     this_bad = False
+                else:
+                    this_bad = True
 
                 if this_bad:
                     bad += 1
                     logging.warning(
                         f"mismatch for {p.calling_name} {p.ema_id}: "
-                        f"official {rules} rank is {official}. " +
+                        f"official {rules} rank is {official}. "
                         f"But We calculate {ours}.")
 
-        logging.info(f"{total} calcs done, of which {bad} were bad")
+        logging.info(f"{total} player ranks calculated, of which {bad} were bad")

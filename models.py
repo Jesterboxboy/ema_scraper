@@ -17,6 +17,8 @@ class RulesetClass(enum.Enum):
     riichi = "riichi"
     mcr = "mcr"
 
+# apparently this is the convoluted thing we have to do in order to get an
+# ENUM into an SQLAlechemy field
 Ruleset: Enum = Enum(
     # this may trigger an error in alembic
     # if it does, go into the revision file, and remove the
@@ -28,6 +30,12 @@ Ruleset: Enum = Enum(
     validate_strings=True,
 )
 
+class Settings(Base):
+    ''' this is a miscellaneous collection of values that don't fit
+    anywhere else'''
+    __tablename__ = "settings"
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str]
 
 class Country(Base):
     __tablename__ = "country"
@@ -102,10 +110,14 @@ class Player(Base):
     local_club: Mapped[Optional[str]]
     local_club_url: Mapped[Optional[str]]
     profile_pic: Mapped[Optional[str]]
-    official_mcr_rank: Mapped[Optional[float]]
-    official_riichi_rank: Mapped[Optional[float]]
+
     mcr_rank: Mapped[Optional[float]]
+    mcr_official_rank: Mapped[Optional[float]]
+    mcr_position: Mapped[Optional[int]]
+
     riichi_rank: Mapped[Optional[float]]
+    riichi_official_rank: Mapped[Optional[float]]
+    riichi_position: Mapped[Optional[int]]
 
     country: Mapped[Optional[Country]] = relationship(back_populates="players")
     tournaments: Mapped[List[PlayerTournament]] = relationship(
