@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from bs4 import BeautifulSoup as bs4
 import requests
 
-from models import Player, RulesetClass
+from models import Player, RulesetClass, Settings
 from config import HTMLPATH
 from utils.ema_jinja import jinja
 
@@ -24,6 +24,18 @@ footer.site-footer {
     font-size: 0.8em;
     text-align: center;
 }
+#tablepress-4 {
+    margin-top: 1em;
+}
+#tablepress-4 .column-2, #tablepress-4 .column-8 {
+  border-left: 3px double green !important;
+}
+#tablepress-4 th, #tablepress-4 td {
+    text-align: center !important;
+}
+.emafade {
+    color: #666;
+}
 '''
 
 TOGGLER = """<script>
@@ -39,10 +51,30 @@ jQuery(function onready() {
 </script>"""
 
 class Render_Player:
+    '''
+    TODO the summary table. By ruleset:
+    (pos/N), pts (700.12), #MERS tourns, #1sts, #2nds, #3rds, #non-MERS tourns
+    '''
     def __init__(self, db):
         self.db = db
         r = requests.get("https://silk.mahjong.ie/template-player")
         self.template = r.content
+        self.totals = {
+            'mcr': self.db.query(Settings.value).filter_by(
+                key='player_count_mcr').first()[0],
+            'riichi': self.db.query(Settings.value).filter_by(
+                key='player_count_riichi').first()[0]
+            }
+
+    def fill_player_summary_table(self, dom):
+        '''
+        key = f"player_count_{rules}"
+        setting = self.db.query(Settings).filter_by(key=key).first()
+        '''
+        zone = dom.find(id="tablepress-4").find("tbody")
+        j = jinja.from_string(str(zone))
+        new_row = j.render(c=self.counts, p=self.p, t=self.totals)
+        zone.replace_with(bs4(new_row, 'html.parser'))
 
     def fill_player_tournament_table(self, dom, rules, results):
         zone = dom.find(id=f"{rules}_results")
@@ -59,6 +91,12 @@ class Render_Player:
                 reverse=True,
                 )
 
+        ranked_count = 0
+        nonranked_count = 0
+        count_1st = 0
+        count_2nd = 0
+        count_3rd = 0
+
         results_to_hide = 0
         for r in results:
             j = jinja.from_string(str(row))
@@ -66,6 +104,16 @@ class Render_Player:
             tbody.append(bs4(new_row, 'html.parser'))
             if r.tournament.age_factor == 0:
                 results_to_hide += 1
+                nonranked_count += 1
+            else:
+                ranked_count += 1
+                match r.position:
+                    case 1:
+                        count_1st += 1
+                    case 2:
+                        count_2nd += 1
+                    case 3:
+                        count_3rd += 1
 
         if results_to_hide:
             # add a toggle to show tournaments with age 0
@@ -76,18 +124,22 @@ class Render_Player:
                 )
             zone.append(toggler)
 
+        self.counts[rules] = (ranked_count , count_1st, count_2nd,
+                                 count_3rd, nonranked_count)
+
         # remove the template row, we've finished with it now
         row.decompose()
 
     def one_player(self, id):
         print('.', end='')
-        p = self.db.query(Player).filter(Player.ema_id == id).first()
+        self.counts = {'mcr': [0,0,0,0,0], 'riichi': [0,0,0,0,0]}
+        self.p = self.db.query(Player).filter(Player.ema_id == id).first()
         dom = bs4(self.template, "html.parser")
         dom.select_one("style").append(PAGE_STYLES)
         # allocate tournaments to rulesets, most recent first
         riichi = []
         mcr = []
-        for r in p.tournaments:
+        for r in self.p.tournaments:
             if r.ruleset == RulesetClass.riichi:
                 riichi.append(r)
             else:
@@ -96,11 +148,13 @@ class Render_Player:
         player_zone = dom.find(id="player_data")
 
         t = jinja.from_string(str(player_zone))
-        new_text = t.render(p=p)
+        new_text = t.render(p=self.p)
         player_zone.replace_with(bs4(new_text, "html.parser"))
 
         self.fill_player_tournament_table(dom, 'mcr', mcr)
         self.fill_player_tournament_table(dom, 'riichi', riichi)
+
+        self.fill_player_summary_table(dom)
 
         dom.find(id='colophon').replace_with(bs4(
             f'''<footer class="site-footer" role="contentinfo">Updated:
@@ -108,19 +162,22 @@ class Render_Player:
             </footer>''',
             features="html.parser"))
         dom.body.append(bs4(TOGGLER, "html.parser"))
-        with open(HTMLPATH / "Players" / f"{p.id}.html", "w", encoding='utf-8') as file:
+        with open(HTMLPATH / "Players" / f"{self.p.id}.html",
+                  "w", encoding='utf-8') as file:
             file.write(str(dom))
 
-        with open(HTMLPATH / "Players" / f"{p.ema_id}.html", "w",
+        # add a redirect from the old player profile url
+        with open(HTMLPATH / "Players" / f"{self.p.ema_id}.html", "w",
                   encoding='utf-8') as file:
             file.write(f'''<?php
                        header("HTTP/1.1 301 Moved Permanently");
-                       header("Location: /ranking/Players/{p.id}");
+                       header("Location: /ranking/Players/{self.p.id}");
                        exit();''')
 
-        with open(HTMLPATH / "Players" / f"{p.ema_id}_History.html", "w",
+        # add a redirect from the old player history url
+        with open(HTMLPATH / "Players" / f"{self.p.ema_id}_History.html", "w",
                   encoding='utf-8') as file:
             file.write(f'''<?php
-                       header("HTTP/1.1 301 Moved Permanently");
-                       header("Location: /ranking/Players/{p.id}?expand=1");
-                       exit();''')
+                header("HTTP/1.1 301 Moved Permanently");
+                header("Location: /ranking/Players/{self.p.id}?expand=1");
+                exit();''')

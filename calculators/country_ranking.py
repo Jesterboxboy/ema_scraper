@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 
 from utils.scrapers import Country_Scraper
-from models import Player, Country, RulesetClass
+from models import Player, Country, RulesetClass, Settings
 from calculators.ranking import PlayerRankingEngine
 
 class CountryRankingEngine:
@@ -31,6 +31,8 @@ class CountryRankingEngine:
         is_mcr = ruleset == RulesetClass.mcr
         rules = str(ruleset).replace("RulesetClass.", "")
 
+        # find all players that have a valid rank for this ruleset, and
+        # list them in descending rank order
         all_players = self.db.query(Player).filter(
             Player.ema_id != -1).filter(
             getattr(Player, f"{rules}_rank") != None).order_by(
@@ -40,6 +42,18 @@ class CountryRankingEngine:
             getattr(Player, f"{rules}_rank") > 700)
 
         self.player_count = len(all_players.all())
+        # save this value in the db
+        key = f"player_count_{rules}"
+        setting = self.db.query(Settings).filter_by(key=key).first()
+        new = setting is None
+        if new:
+            setting = Settings()
+            setting.key = key
+        setting.value = self.player_count
+        if new:
+            self.db.add(setting)
+        self.db.commit()
+
         self.players700plus = len(all_700plus.all())
         for c in self.db.query(Country).filter(Country.id != "??").filter(
                 Country.ema_since is not None):
