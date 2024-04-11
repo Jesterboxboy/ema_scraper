@@ -10,6 +10,7 @@ from config import DBPATH
 from models import Player, Tournament, PlayerTournament, Country, RulesetClass
 from utils.scrapers import Tournament_Scraper, Country_Scraper
 from calculators.ranking import PlayerRankingEngine
+from calculators.ranking_austria_riichi import PlayerRankingEngine as AustrianPlayerRankingEngine
 from calculators.country_ranking import CountryRankingEngine
 from calculators.quota import QuotaMaker
 from calculators.get_results import results_to_db
@@ -38,6 +39,11 @@ def rank_players(db):
     PlayerRankingEngine(db).rank_all_players(assess=True,
         reckoning_day=datetime(2024,2,25))
 
+def rank_aut_players(db):
+    ''' calculate all player rankings, using today's date as the baseline'''
+    AustrianPlayerRankingEngine(db).rank_all_players(assess=True,
+        quota_start=(datetime(2020,1,1)),quota_end=(datetime(2024,4,11)))
+
 def scrape_tournaments(db):
     '''scrape the EMA mirror site and put all the data into our database'''
     Tournament_Scraper(db).scrape_all() # start=2023, end=2024
@@ -45,7 +51,7 @@ def scrape_tournaments(db):
 def make_quotas(db):
     '''make the two example quotas that currently appear on the EMA site'''
     QuotaMaker(db, 40, RulesetClass.mcr).make()
-    QuotaMaker(db, 140, RulesetClass.riichi).make()
+    QuotaMaker(db, 90, RulesetClass.riichi).make()
 
 def render_one_results(db):
     '''In production we will render a page for every tournament. However,
@@ -68,12 +74,12 @@ def render_players(db):
 
 with Session(engine) as db:
     # scrape_tournaments(db)
-    # rank_players(db)
+    rank_aut_players(db)
     # rank_countries(db)
     # make_quotas(db)
-    # Render_Year(db).years(2005, 2024)
+    # Render_Year(db).years(2022, 2023)
     # render_one_results(db)
-    render_players(db)
+    # render_players(db)
     # results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
     # PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
     pass
