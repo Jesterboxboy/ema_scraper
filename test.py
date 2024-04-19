@@ -53,12 +53,12 @@ def rank_aut_players(db):
 
 def scrape_tournaments(db):
     '''scrape the EMA mirror site and put all the data into our database'''
-    Tournament_Scraper(db).scrape_all(start=2024) # start=2023, end=2024
+    Tournament_Scraper(db).scrape_all() #  example parameters: start=2023, end=2024
 
 def make_quotas(db):
     '''make the two example quotas that currently appear on the EMA site'''
     QuotaMaker(db, 40, RulesetClass.mcr).make()
-    QuotaMaker(db, 90, RulesetClass.riichi).make()
+    QuotaMaker(db, 140, RulesetClass.riichi).make()
 
 def render_one_results(db):
     '''In production we will render a page for every tournament. However,
@@ -88,7 +88,7 @@ with Session(engine) as db:
     # render_players(db)
     # results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
     # PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
-    #rank_aut_players(db)
+    rank_aut_players(db)
     pass
 
 print("done")
