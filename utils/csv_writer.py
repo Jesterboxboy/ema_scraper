@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-# Based on data_scrapers.py from Jesterboxboy
+# simple function that writes out a dictionary into csv files
+# right now only used for austrian ranking calculator
 
 import csv
 
