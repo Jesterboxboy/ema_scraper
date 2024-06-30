@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from bs4 import BeautifulSoup as bs4
 import requests
 
-from models import Player, RulesetClass, Settings
+from models import Player, Ruleset, Settings
 from config import HTMLPATH
 from utils.ema_jinja import jinja
 
@@ -140,7 +140,7 @@ class Render_Player:
         riichi = []
         mcr = []
         for r in self.p.tournaments:
-            if r.ruleset == RulesetClass.riichi:
+            if r.ruleset == Ruleset.riichi:
                 riichi.append(r)
             else:
                 mcr.append(r)

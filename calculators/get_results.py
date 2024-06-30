@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 import xlrd
 
-from models import Player, Tournament, PlayerTournament, RulesetClass, Country
+from models import Player, Tournament, PlayerTournament, Ruleset, Country
 from utils.scrapers import Tournament_Scraper
 from calculators.ranking import PlayerRankingEngine
 
@@ -25,8 +25,8 @@ def results_to_db(db, file: str, sheet: str) -> Tournament:
     t.raw_date = sh.cell_value(rowx=2, colx=16)
 
     rules = sh.cell_value(rowx=2, colx=15)
-    t.ruleset = RulesetClass.riichi if rules.lower() == "riichi" \
-        else RulesetClass.mcr
+    t.ruleset = Ruleset.riichi if rules.lower() == "riichi" \
+        else Ruleset.mcr
 
     t.start_date, t.end_date = Tournament_Scraper.parse_dates(
         t.raw_date, t.title)

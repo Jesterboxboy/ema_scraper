@@ -57,7 +57,7 @@ from math import ceil
 
 from sqlalchemy import update
 
-from models import Player, Tournament, PlayerTournament, RulesetClass, Settings
+from models import Player, Tournament, PlayerTournament, Ruleset, Settings
 
 class PlayerRankingEngine:
     def __init__(self, db):
@@ -108,7 +108,7 @@ class PlayerRankingEngine:
         ''' calculate both MCR and riichi ranking for a given player '''
         # get all results with a non-zero weighting
         results = [r for r in p.tournaments if r.aged_mers > 0]
-        for ruleset in RulesetClass:
+        for ruleset in Ruleset:
             self.rank_one_player_for_one_ruleset(p, ruleset, results)
 
 

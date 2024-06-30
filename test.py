@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 from config import DBPATH
-from models import Player, Tournament, PlayerTournament, Country, RulesetClass
+from models import Player, Tournament, PlayerTournament, Country, Ruleset
 from utils.scrapers import Tournament_Scraper, Country_Scraper
 from calculators.ranking import PlayerRankingEngine
 from calculators.country_ranking import CountryRankingEngine
@@ -30,13 +30,13 @@ engine = create_engine(DBPATH, poolclass=NullPool)
 def rank_countries(db):
     '''calculate country rankings, used as a basis for national quotas'''
     r = CountryRankingEngine(db)
-    r.rank_countries_for_one_ruleset(RulesetClass.riichi, assess=True)
-    r.rank_countries_for_one_ruleset(RulesetClass.mcr, assess=True)
+    r.rank_countries_for_one_ruleset(Ruleset.riichi, assess=True)
+    r.rank_countries_for_one_ruleset(Ruleset.mcr, assess=True)
 
 def rank_players(db):
     ''' calculate all player rankings, using today's date as the baseline'''
     PlayerRankingEngine(db).rank_all_players(assess=True,
-        reckoning_day=datetime(2024,2,25))
+        reckoning_day=datetime.now())
 
 def scrape_tournaments(db):
     '''scrape the EMA mirror site and put all the data into our database'''
@@ -44,13 +44,13 @@ def scrape_tournaments(db):
 
 def make_quotas(db):
     '''make the two example quotas that currently appear on the EMA site'''
-    QuotaMaker(db, 40, RulesetClass.mcr).make()
-    QuotaMaker(db, 140, RulesetClass.riichi).make()
+    QuotaMaker(db, 40, Ruleset.mcr).make()
+    QuotaMaker(db, 140, Ruleset.riichi).make()
 
 def render_one_results(db):
     '''In production we will render a page for every tournament. However,
     for now, we just render a few samples to test the process'''
-    t = db.query(Tournament).filter(Tournament.ruleset == RulesetClass.mcr
+    t = db.query(Tournament).filter(Tournament.ruleset == Ruleset.mcr
         ).filter(Tournament.old_id == 373).first()
     Render_Results(db).one_tournament(t)
 
@@ -58,24 +58,27 @@ def render_players(db):
     '''In production we will render a page for every player. However, for now,
     we just render a few sample players to test the process'''
     r = Render_Player(db)
-    for id in (
-        "07000155", # lots in each ruleset
-        "14990047", # riichi only
-        "04390002", # mcr only
-        "07000001", # bad rank calc?
-        ):
-        r.one_player(id)
+    # for id in (
+    #     "07000155", # lots in each ruleset
+    #     "14990047", # riichi only
+    #     "04390002", # mcr only
+    #     "07000001", # bad rank calc?
+    #     ):
+    all_players = db.query(Player)
+    for p in all_players:
+        r.one_player(p.ema_id)
 
 with Session(engine) as db:
     # scrape_tournaments(db)
+    # Tournament_Scraper(db).scrape_all(start=2019, end=2025)
     # rank_players(db)
     # rank_countries(db)
-    # make_quotas(db)
+    make_quotas(db)
     # Render_Year(db).years(2005, 2024)
     # render_one_results(db)
-    render_players(db)
+    # render_players(db)
     # results_to_db(db, 'd:\\zaps\\emarebuild\\fake-tourney.xls', 'rcr220')
-    # PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", RulesetClass.riichi)
+    # PlayerRankingEngine(db).rank_one_player_for_one_ruleset("11990143", Ruleset.riichi)
     pass
 
 print("done")
