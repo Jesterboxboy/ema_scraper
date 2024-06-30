@@ -68,6 +68,7 @@ class QuotaMaker():
         self.remaining = quota
         self.rules = "mcr" if ruleset == Ruleset.mcr else "riichi"
         self.quotas = []
+        self.partB = []
 
     def seat(self, idx: int, seats: int = 1):
         if seats < 0:
@@ -79,7 +80,6 @@ class QuotaMaker():
     def calc_caps(self):
         self.quotas = []
         self.remaining = self.total
-        self.partB_sum = 0
 
         players = self.db.query(Player).filter(
             Player.ema_id != -1).filter(
@@ -99,7 +99,6 @@ class QuotaMaker():
             partB1 = getattr(c, f"player_count_{self.rules}") / player_count
             partB2 = getattr(c, f"over700_{self.rules}") / player700_count
             partB3 = (partB1 + partB2) / 2
-            self.partB_sum += partB3
 
             cap = len(local_players.filter(
                 getattr(Player, rank_column) > self.average).all())
@@ -143,16 +142,26 @@ class QuotaMaker():
 
         # redistribution proportional to PART B3
 
+        for pos, c in enumerate(self.countries):
+            self.partB.append(0)
+
         scalar = 0
         while self.remaining > 0:
             scalar += 1
 
             scores = []
             for pos, c in enumerate(self.quotas):
-                scores.append(scalar * c["partB3"] - self.quotas[pos]["quota"])
+                b3 = scalar * c["partB3"]
+                if b3 < self.partB[pos] + 1:
+                    # we cannot increase the quota for this country yet
+                    b3 = 0
+                scores.append(b3)
 
+            # find which country has the biggest partB3*N,
+            #      and increase the quota for that country
             incr = scores.index(max(scores))
             self.seat(incr)
+            self.partB[incr] += 1
 
 
         # apply cap

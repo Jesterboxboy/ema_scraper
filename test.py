@@ -35,10 +35,10 @@ def rank_countries(db):
     r.rank_countries_for_one_ruleset(Ruleset.riichi, assess=True)
     r.rank_countries_for_one_ruleset(Ruleset.mcr, assess=True)
 
-def rank_players(db):
+def rank_players(db, reckoning_day=datetime.now()):
     ''' calculate all player rankings, using today's date as the baseline'''
     PlayerRankingEngine(db).rank_all_players(assess=True,
-        reckoning_day=datetime.now())
+                                             reckoning_day=reckoning_day)
 
 def rank_aut_players(db):
     ''' calculate all player rankings, using today's date as the baseline'''
@@ -57,7 +57,7 @@ def scrape_tournaments(db):
 
 def make_quotas(db):
     '''make the two example quotas that currently appear on the EMA site'''
-    QuotaMaker(db, 40, Ruleset.mcr).make()
+    QuotaMaker(db, 148, Ruleset.mcr).make()
     QuotaMaker(db, 140, Ruleset.riichi).make()
 
 def render_one_results(db):
@@ -84,7 +84,7 @@ def render_players(db):
 with Session(engine) as db:
     # scrape_tournaments(db)
     # Tournament_Scraper(db).scrape_all(start=2019, end=2025)
-    rank_players(db)
+    rank_players(db, reckoning_day=datetime(2024,4,18))
     # rank_aut_players(db)
     rank_countries(db)
     make_quotas(db)
