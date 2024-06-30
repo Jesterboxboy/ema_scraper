@@ -20,6 +20,7 @@ from calculators.ranking import PlayerRankingEngine
 country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')
 URLBASE = "https://silk.mahjong.ie/ranking/"
+#URLBASE = "http://mahjong-europe.org/ranking/"
 
 def french_float(number_string):
     return float(number_string.replace(',', '.'))

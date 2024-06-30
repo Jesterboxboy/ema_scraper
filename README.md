@@ -60,6 +60,11 @@ and
 [riichi](https://silk.mahjong.ie/ranking/quotas_RCR.html)
 example pages
 
+[ranking_austria_riichi.py](calculators/ranking_austria_riichi.py) contains function to calculate the
+ranking for the Austrian Riichi Mahjong Association that is used in deciding who gets quota seats for
+ERMC and WRC.
+
+
 ### Page renderers : `renderers/`
 
 [render_player.py](renderers/render_player.py) write a static player profile
@@ -93,6 +98,9 @@ base-rank calculations remain, and none of these contribute to live rankings.
 
 [httrack.log](httrack.log) is the log file from the httrack scrape of the
 original website
+
+[csv_writer.py](utils/csv_writer.py) Simple function that writes out the dict
+produced by (calculators/ranking_austria.py) to a csv file.
 
 
 ## To initialise the database

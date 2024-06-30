@@ -7,3 +7,5 @@ alembic
 daterangeparser
 dateparser
 xlrd
+jinja2
+csv
