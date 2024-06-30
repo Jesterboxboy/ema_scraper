@@ -152,16 +152,18 @@ class QuotaMaker():
             scores = []
             for pos, c in enumerate(self.quotas):
                 b3 = scalar * c["partB3"]
-                if b3 < self.partB[pos] + 1:
+                if b3 <= self.partB[pos]:
                     # we cannot increase the quota for this country yet
                     b3 = 0
                 scores.append(b3)
 
             # find which country has the biggest partB3*N,
             #      and increase the quota for that country
-            incr = scores.index(max(scores))
-            self.seat(incr)
-            self.partB[incr] += 1
+            m = max(scores)
+            if m > 0:
+                incr = scores.index(m)
+                self.seat(incr)
+                self.partB[incr] += 1
 
 
         # apply cap
