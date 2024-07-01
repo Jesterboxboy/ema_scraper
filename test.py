@@ -85,13 +85,13 @@ with Session(engine) as db:
     # scrape_tournaments(db)
     # Tournament_Scraper(db).scrape_all(start=2019, end=2025)
 
-    rank_players(db, reckoning_day=datetime(2024,4,15))
-    rank_countries(db)
+    # rank_players(db, reckoning_day=datetime(2024,4,15))
+    # rank_countries(db)
     QuotaMaker(db, 148, Ruleset.mcr).make()
 
-    rank_players(db, reckoning_day=datetime(2024,6,26))
-    rank_countries(db)
-    QuotaMaker(db, 140, Ruleset.riichi).make()
+    # rank_players(db, reckoning_day=datetime(2024,6,26))
+    # rank_countries(db)
+    # QuotaMaker(db, 140, Ruleset.riichi).make()
 
     # rank_aut_players(db)
     # make_quotas(db)

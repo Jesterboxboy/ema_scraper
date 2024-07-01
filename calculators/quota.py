@@ -139,7 +139,6 @@ class QuotaMaker():
             if pos > 1:
                 break
 
-
         # redistribution proportional to PART B3
 
         for pos, c in enumerate(self.countries):
@@ -151,14 +150,12 @@ class QuotaMaker():
 
             scores = []
             for pos, c in enumerate(self.quotas):
-                b3 = scalar * c["partB3"]
-                if b3 <= self.partB[pos]:
-                    # we cannot increase the quota for this country yet
-                    b3 = 0
+                # find which country has the biggest discrepancy between
+                # its partB3*N and its current quota,
+                # and increase the quota for that country
+                b3 = scalar * c["partB3"] - self.partB[pos]
                 scores.append(b3)
 
-            # find which country has the biggest partB3*N,
-            #      and increase the quota for that country
             m = max(scores)
             if m > 0:
                 incr = scores.index(m)
