@@ -9,7 +9,7 @@ from sqlalchemy import extract
 
 from config import HTMLPATH
 from utils.ema_jinja import jinja
-from models import RulesetClass, Tournament
+from models import Ruleset, Tournament
 
 PAGE_STYLES = '''
 .tablepress-id-5 td {
@@ -59,8 +59,8 @@ class Render_Year:
         j = jinja.from_string(dom.title.string)
         dom.title.string.replace_with(bs4(j.render(year=year), 'html.parser'))
 
-        for rules in RulesetClass:
-            rulestring = 'mcr' if rules == RulesetClass.mcr else 'riichi'
+        for rules in Ruleset:
+            rulestring = 'mcr' if rules == Ruleset.mcr else 'riichi'
             zone = dom.find(id=f"{rulestring}").find('table')
             tbody = zone.find("tbody")
             row = tbody.find("tr")

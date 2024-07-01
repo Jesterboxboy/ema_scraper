@@ -1,5 +1,5 @@
-import enum
 from datetime import datetime
+from enum import Enum as PyEnum
 from typing import Optional, List
 
 from sqlalchemy import Enum, ForeignKey
@@ -13,22 +13,10 @@ class Base(DeclarativeBase):
 metadata = Base.metadata
 
 
-class RulesetClass(enum.Enum):
+class Ruleset(PyEnum):
     riichi = "riichi"
     mcr = "mcr"
 
-# apparently this is the convoluted thing we have to do in order to get an
-# ENUM into an SQLAlechemy field
-Ruleset: Enum = Enum(
-    # this may trigger an error in alembic
-    # if it does, go into the revision file, and remove the
-    # metadata=MetaData() clause where the Column is created
-    RulesetClass,
-    name="ruleset_type",
-    create_constraint=True,
-    metadata=Base.metadata,
-    validate_strings=True,
-)
 
 class Settings(Base):
     ''' this is a miscellaneous collection of values that don't fit
@@ -37,14 +25,40 @@ class Settings(Base):
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[str]
 
+
+class Social(Base):
+    ''' each row is one social network link, for one club
+    A club may have multiple social links,
+    but each social link belongs to exactly one club'''
+    __tablename__ = "social"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    url: Mapped[str]
+    network_name: Mapped[str]
+    club_id: Mapped[int] = mapped_column(ForeignKey("club.id"))
+    club: Mapped["Club"] = relationship(back_populates="socials")
+
+
+class Club(Base):
+    ''' can be a local club or a national org '''
+    __tablename__ = "club"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str]
+    url: Mapped[Optional[str]]
+    logo_url: Mapped[Optional[str]]
+    is_the_national_org: Mapped[bool]
+    country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
+    players: Mapped[List["Player"]] = relationship(back_populates="local_club")
+    socials: Mapped[List[Social]] = relationship(back_populates="club")
+
+
 class Country(Base):
     __tablename__ = "country"
     id: Mapped[str] = mapped_column(String(2), primary_key=True) # iso2
     old3: Mapped[Optional[str]]
     name_english: Mapped[str]
     ema_since: Mapped[Optional[datetime]]
-    national_org_name: Mapped[Optional[str]]
-    national_org_url: Mapped[Optional[str]]
+    #national_org_id: Mapped[Optional[int]] = mapped_column(ForeignKey("club.id"))
+    #national_org: Mapped[Club] = relationship(back_populates="players")
 
     country_ranking_mcr: Mapped[Optional[int]]
     # number of qualifying players
@@ -74,6 +88,7 @@ class Country(Base):
 
 
 class PlayerTournament(Base):
+    ''' many-to-many mapping of players & tournaments '''
     __tablename__ = "player_x_tournament"
     player_id: Mapped[int] = mapped_column(
         ForeignKey("player.id"), primary_key=True)
@@ -87,7 +102,8 @@ class PlayerTournament(Base):
     was_ema: Mapped[bool]
     aged_rank: Mapped[Optional[float]]
     aged_mers: Mapped[Optional[float]]
-    ruleset: Mapped[str] = mapped_column(Ruleset, nullable=False)
+    # duplicating ruleset here means we don't need a join, but it's bad coding
+    ruleset: Mapped[Ruleset] = mapped_column(Enum(Ruleset), nullable=False)
     # we want to record what the country of affiliation was at the time of
     # the event, as this is used to calculate MERS. Affiliation may change
     # after the event, so we need the historic, not live, value
@@ -107,8 +123,8 @@ class Player(Base):
     calling_name: Mapped[str]
     ema_id: Mapped[Optional[str]] = mapped_column(String(8))
     country_id: Mapped[Optional[str]] = mapped_column(ForeignKey("country.id"))
-    local_club: Mapped[Optional[str]]
-    local_club_url: Mapped[Optional[str]]
+    local_club_id: Mapped[Optional[int]] = mapped_column(ForeignKey("club.id"))
+    local_club: Mapped[Club] = relationship(back_populates="players")
     profile_pic: Mapped[Optional[str]]
 
     mcr_rank: Mapped[Optional[float]]
@@ -127,7 +143,7 @@ class Player(Base):
     def rank(self, ruleset, rank: int):
         if rank is not None:
             rank = round(rank * 100) / 100
-        if ruleset == RulesetClass.mcr:
+        if ruleset == Ruleset.mcr:
             self.mcr_rank = rank
         else:
             self.riichi_rank = rank
@@ -141,7 +157,7 @@ class Tournament(Base):
     place: Mapped[Optional[str]]
     mers: Mapped[Optional[float]]
     url: Mapped[Optional[str]]
-    ruleset: Mapped[str] = mapped_column(Ruleset, nullable=False)
+    ruleset: Mapped[Ruleset] = mapped_column(Enum(Ruleset), nullable=False)
     raw_date: Mapped[Optional[str]]
     start_date: Mapped[datetime]
     end_date: Mapped[datetime]

@@ -10,47 +10,23 @@ from utils.ema_jinja import jinja
 # TODO these will all go into a css file at some point,
 #      but for now, they're easy to edit here
 PAGE_STYLES = '''
-#emaflagtable {
-    width: auto;
-    margin:auto;
-}
+
 '''
 
 class Render_Results:
 
     def __init__(self, db):
         self.db = db
-        r = requests.get("https://silk.mahjong.ie/template-results")
+        r = requests.get("https://silk.mahjong.ie/template-country-ranking")
         self.template = r.content
 
-    def fill_results_table(self, zone, tournament, results) -> dict[str, int]:
 
-        if not len(results):
-            zone.decompose()
-            return
+    def one_ruleset(self, rules: Ruleset) -> None:
 
-        tbody = zone.find("tbody")
-        row = tbody.find("tr")
-        results.sort(key=lambda pt: pt.position)
-        country_count = {}
+        for c in self.db.query(Country).filter(Country.id != "??").filter(
+                Country.ema_since is not None):
 
-        for pt in results:
-            j = jinja.from_string(str(row))
-            new_row = j.render(pt=pt, t=tournament, p=pt.player)
-            tbody.append(bs4(new_row, 'html.parser'))
-            # count players by country
-            if pt.country_id is None:
-                pass
-            elif pt.country_id in country_count:
-                country_count[pt.country_id] += 1
-            else:
-                country_count[pt.country_id] = 1
 
-        # remove the template row, we've finished with it now
-        row.decompose()
-        return country_count
-
-    def one_tournament(self, t) -> None:
         dom = bs4(self.template, "html.parser")
         dom.select_one("style").append(PAGE_STYLES)
         print('.', end='')

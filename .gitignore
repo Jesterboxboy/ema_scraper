@@ -10,3 +10,4 @@ migrations/versions/__pycache__
 .spyproject/
 testpy.log
 *.csv
+config.py

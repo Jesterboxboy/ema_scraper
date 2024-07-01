@@ -21,7 +21,11 @@
 # Quotas Q = [A1+A2+A3] + B3*[T-SumAllCountries(PartA)]
 
 # For this part [ B3*[T-SumAllCountries(PartA)] ], we use a recursive method,
-# decided by EMA GA 2019
+# decided by EMA GA 2019:
+# start by assuming only 1 seat is available for part B. Allocate it.
+# Then work out which country would get the additional seat, if 2 seats were
+# available under Part B. And continue to iterate until all seats available to
+# part B have been allocated.
 
 # Limits and Penalty
 
@@ -55,30 +59,27 @@
 
 import logging
 
-from models import Player, Country, RulesetClass
+from models import Player, Country, Ruleset
 
 class QuotaMaker():
-    def __init__(self, db, quota: int, ruleset: RulesetClass):
+    def __init__(self, db, quota: int, ruleset: Ruleset):
         self.db = db
         self.total = quota
         self.remaining = quota
-        self.rules = "mcr" if ruleset == RulesetClass.mcr else "riichi"
+        self.rules = "mcr" if ruleset == Ruleset.mcr else "riichi"
         self.quotas = []
+        self.partB = []
 
     def seat(self, idx: int, seats: int = 1):
         if seats < 0:
             logging.error("Asked to allocate {seats} to country #{idx}")
-        seats = min(self.remaining,
-                    seats,
-                    self.quotas[idx]["cap"] - self.quotas[idx]["quota"],
-                    )
+        seats = min(self.remaining, seats)
         self.remaining -= seats
         self.quotas[idx]["quota"] += seats
 
     def calc_caps(self):
         self.quotas = []
         self.remaining = self.total
-        self.partB_sum = 0
 
         players = self.db.query(Player).filter(
             Player.ema_id != -1).filter(
@@ -98,20 +99,17 @@ class QuotaMaker():
             partB1 = getattr(c, f"player_count_{self.rules}") / player_count
             partB2 = getattr(c, f"over700_{self.rules}") / player700_count
             partB3 = (partB1 + partB2) / 2
-            self.partB_sum += partB3
 
             cap = len(local_players.filter(
                 getattr(Player, rank_column) > self.average).all())
             self.quotas.append({
                 "cap": max(1, cap),
                 "quota": 0,
+                "partB1": partB1,
                 "partB2": partB2,
                 "partB3": partB3,
                 })
 
-            # PART A2
-
-            self.seat(pos) # ensure at least one seat per country
 
     def make(self):
         self.countries = self.db.query(Country).filter(
@@ -120,23 +118,62 @@ class QuotaMaker():
             Country, f"average_rank_of_top3_players_{self.rules}").desc())
         self.calc_caps()
 
-        # PART A1 - 1 seat for each of the top 3
+
+        # one seat per country
+
+        for pos, c in enumerate(self.countries):
+            self.seat(pos)
+
+
+        # one seat for each country with at least one player over 700
+
+        for pos, c in enumerate(self.quotas):
+            if c["partB2"] > 0:
+                self.seat(pos)
+
+
+        # one seat for each of the top 3
 
         for pos, c in enumerate(self.quotas):
             self.seat(pos)
             if pos > 1:
                 break
 
-        # PART A3 - 1 seat for each country with at least one player over 700
-
-        for pos, c in enumerate(self.quotas):
-            if c["partB2"] > 0:
-                self.seat(pos)
 
         # redistribution proportional to PART B3
 
+        for pos, c in enumerate(self.countries):
+            self.partB.append(0)
+
+        scalar = 0
+        while self.remaining > 0:
+            scalar += 1
+
+            scores = []
+            for pos, c in enumerate(self.quotas):
+                b3 = scalar * c["partB3"]
+                if b3 <= self.partB[pos]:
+                    # we cannot increase the quota for this country yet
+                    b3 = 0
+                scores.append(b3)
+
+            # find which country has the biggest partB3*N,
+            #      and increase the quota for that country
+            m = max(scores)
+            if m > 0:
+                incr = scores.index(m)
+                self.seat(incr)
+                self.partB[incr] += 1
+
+
+        # apply cap
+
         for pos, c in enumerate(self.quotas):
-            self.seat(pos, int(self.remaining * c["partB3"]))
+            excess = c['quota'] - c['cap']
+            if excess > 0:
+                c['quota'] = c['cap']
+                self.remaining += excess
+
 
         # Final redistribution based on ranking
 
@@ -147,13 +184,18 @@ class QuotaMaker():
             if remaining == self.remaining:
                 logging.error("unable to allocate remaining {remaining} seats")
                 break
+
+
         self.wrap_up()
 
     def wrap_up(self):
         """ save our quotas somewhere """ # TODO
         logging.info(f"\n QUOTAS for {self.rules}, total {self.total}\n")
         for pos, c in enumerate(self.quotas):
-            logging.info(f"#{pos+1} {self.countries[pos].name_english} {c}") # ['quota']}/{c['cap']
+            d = {k: round(v, 5) if isinstance(v, float) else v
+                 for k, v in c.items()}
+            logging.info(f"#{pos+1} {self.countries[pos].name_english} {d}")
+
         if self.remaining:
             logging.info(f"{self.remaining} unable to be allocated")
         else:

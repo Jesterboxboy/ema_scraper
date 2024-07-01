@@ -13,12 +13,13 @@ from dateparser import parse as dp_parse
 from daterangeparser import parse as dr_parse
 import pycountry
 
-from models import Player, Tournament, PlayerTournament, Country, RulesetClass
+from models import Player, Tournament, PlayerTournament, Country, Club, \
+                   Ruleset
 from calculators.ranking import PlayerRankingEngine
 
 country_link_pattern = re.compile(r'Country/([A-Z]{3})_')
 country_pattern = re.compile(r'/([a-z]{2}).png')
-URLBASE = "http://silk.mahjong.ie/ranking/"
+URLBASE = "https://silk.mahjong.ie/ranking/"
 #URLBASE = "http://mahjong-europe.org/ranking/"
 
 def french_float(number_string):
@@ -179,7 +180,7 @@ class Tournament_Scraper:
             # iterate over each ruleset
             # we need to specify whether it's mcr or RCR,
             # as ids are duplicated between them!!!
-            ruleset = RulesetClass.mcr
+            ruleset = Ruleset.mcr
             for table in table_raw:
                 tournaments = table.findAll(
                     "div", {"class": re.compile('TCTT_ligne*')})[2:]
@@ -191,14 +192,14 @@ class Tournament_Scraper:
                         countries=cells[6].string,
                         ruleset=ruleset,
                         )
-                ruleset = RulesetClass.riichi
+                ruleset = Ruleset.riichi
 
     def get_bs4_tournament_page(self, tournament_id, ruleset):
         """Get the BeautifulSoup4 object for a tournament web page, given
         its old_id"""
-        prefix = "TR_" if ruleset == RulesetClass.mcr else "TR_RCR_"
+        prefix = "TR_" if ruleset == Ruleset.mcr else "TR_RCR_"
 
-        # TODO TOFIX if id < 10, then a 2-digit number is used in the URL
+        # if id < 10, then a 2-digit number is used in the URL
         if tournament_id < 10:
             prefix += "0"
         tournament_url = f"{URLBASE}Tournament/{prefix}{tournament_id}.html"
@@ -257,7 +258,7 @@ class Tournament_Scraper:
         t.title = tournament_info[4].text.strip().title()
         t.start_date, t.end_date = self.parse_dates(t.raw_date, t.title)
 
-        if tournament_id == 269 and t.ruleset == RulesetClass.mcr:
+        if tournament_id == 269 and t.ruleset == Ruleset.mcr:
             # the player count on the original web page appears to be wrong
             # for this one tournament VILLEJUIF OPEN 2017 - IN VINO VERITAS I
             t.player_count = 84
@@ -272,7 +273,7 @@ class Tournament_Scraper:
             t.effective_end_date = t.end_date + relativedelta(months=27)
         # special handling for the 5 tournaments held in lockdown that got
         # extended eligibility periods in the rankings
-        if t.ruleset == RulesetClass.mcr:
+        if t.ruleset == Ruleset.mcr:
             if tournament_id in (350, 351, 352, 353):
                 t.effective_end_date = datetime(2022, 7, 1)
         else:
@@ -324,14 +325,41 @@ class Tournament_Scraper:
         p.country = self.add_country(old3=old3, iso2=iso2)
         try:
             org = rows[4].findAll("td")[1]
-            p.country.national_org_name = org.string
-            p.country.national_org_url = org.find("a").attrs['href']
+            org = self.db.query(Club).filter(Club.is_the_national_org).filter(
+                Club.country_id == iso2)
+            new_org = org is None
+            if new_org:
+                org = Club()
+                org.country_id = iso2
+                org.is_the_national_org = True
+                org.name = org.string
+                org.url = org.find("a").attrs['href']
+                # TODO logo is on the page
+                # f"/ranking/Country/{old3}_Information.html"
+                # in div.contentpaneopen > table > tbody > tr[0] > td[0] > img.src
+                self.db.add(org)
+            p.country.national_org_id = org.id
         except:
             pass
         try:
             org = rows[5].findAll("td")[1]
-            p.local_club = org.string
-            p.local_club_url = org.find("a").attrs["href"]
+            # does this club already exist in the db? if not, create it
+            club_name = org.string
+            club_url = org.find("a").attrs["href"].replace(
+                'http://', 'https://')
+            club = self.db.query(Club).filter_by(name=club_name).first()
+            if club is None:
+                club = self.db.query(Club).filter_by(url=club_url).first()
+            new_club = club is None
+            if new_club:
+                club = Club()
+                club.name = club_name
+            if club.url is None:
+                club.url = club_url
+            if new_club:
+                self.db.add(club)
+            p.local_club_id = club.id
+            self.db.commit()
         except:
             pass
 
@@ -364,17 +392,16 @@ class Tournament_Scraper:
 
         self.session.query(PlayerTournament).filter_by(tournament=t).delete()
         self.session.commit()
-        is_mcr = t.ruleset == RulesetClass.mcr
+        is_mcr = t.ruleset == Ruleset.mcr
 
         results_table = tournament_soup.findAll(
             "div", {"class": "TCTT_lignes"})[0]
         results = results_table.findAll(
             "div", {"class": re.compile('TCTT_ligne*')})[1:]
         if len(results) != t.player_count:
-            logging.error(f"""
-Discrepancy between number of players ({t.player_count}) and
-number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
-""")
+            logging.error("Discrepancy between number of players "
+                f"({t.player_count}) and number of results ({len(results)}) "
+                f"for {t.title}, {t.ruleset} {t.old_id}")
         rank_errors = 0
         previous_position = 0
         previous_table_points = 0
@@ -416,7 +443,7 @@ number of results ({len(results)}) for {t.title}, {t.ruleset} {t.old_id}
                 # is unique, and is attached to *this* tournament only
                 name = result_content[3].string.title() + \
                     " " + result_content[2].string.title() + \
-                    str(t.ruleset).replace("RulesetClass.", " (") + \
+                    str(t.ruleset).replace("Ruleset.", " (") + \
                     f"{t.old_id} {position}th)"
                 was_ema = False
                 rank = 0

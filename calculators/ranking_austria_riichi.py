@@ -28,7 +28,7 @@ from math import ceil
 
 from sqlalchemy import update
 
-from models import Player, Tournament, PlayerTournament, RulesetClass, Settings
+from models import Player, Tournament, PlayerTournament, Settings
 
 class PlayerRankingEngine:
     def __init__(self, db):
