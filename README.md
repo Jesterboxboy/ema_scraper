@@ -105,7 +105,8 @@ produced by (calculators/ranking_austria.py) to a csv file.
 
 ## To initialise the database
 
-Set the path to your database in [config.py](config.py).
+Set the path to your database in [config.py](config.py) and check if the folder
+migrations/versions exists.
 
 Then, from the command line:
 `alembic revision --autogenerate -m "initialise db"`
