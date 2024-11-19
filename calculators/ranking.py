@@ -165,6 +165,7 @@ class PlayerRankingEngine:
         number_eligible = ceil(5 + 0.8*max(len(results) - 5, 0))
         return results[0:number_eligible]
 
+    # TODO it would be nice to be able to do this for just one ruleset
     def rank_all_players(self, reckoning_day:datetime = None, assess=False):
         """ cycle through all players, and rank each in turn """
         self.weight_tournaments(reckoning_day or datetime.now())

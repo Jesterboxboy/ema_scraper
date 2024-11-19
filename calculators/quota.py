@@ -159,6 +159,11 @@ class QuotaMaker():
             m = max(scores)
             if m > 0:
                 incr = scores.index(m)
+                if m in scores[incr+1:]:
+                    logging.warning(f"partb3 collision with scalar={scalar},"
+                        f"{self.countries[incr].name_english} and "
+                        f"{self.countries[scores[incr+1:].index(m)].name_english}")
+                    logging.warning(scores)
                 self.seat(incr)
                 self.partB[incr] += 1
 
